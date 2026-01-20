@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cronojobs-manager-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cronjobs-manager-role
+  namespace: default
+rules:
+  # O grupo da API de CronJobs é "batch"
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  # Verbos: o que pode fazer (create é o mais importante para você)
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cronojobs-manager-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: cronojobs-manager-sa
+  namespace: default
+roleRef:
+  kind: Role
+  name: cronjobs-manager-role
+  apiGroup: rbac.authorization.k8s.io

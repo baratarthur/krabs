@@ -1,0 +1,8 @@
+{
+    "coordinator_url": "",
+    "latency_groups": ["0 - 30ms", "30ms - 200ms"],
+    "processingwidth_percentage": 1,
+    "cluster": {
+        "name": "local_cluster"
+    }
+}

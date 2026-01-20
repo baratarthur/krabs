@@ -1,0 +1,72 @@
+# 1. Configuração de Senhas e Usuários
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "admin"
+  POSTGRES_USER: "admin"
+  POSTGRES_DB: "krabs"
+
+---
+# 2. Volume Persistente (Para os dados não sumirem ao reiniciar)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Tamanho do disco
+
+---
+# 3. O Banco de Dados em si
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15 # Versão estável
+        ports:
+        - containerPort: 5432
+        # Carrega as variáveis definidas no Secret acima
+        envFrom:
+        - secretRef:
+            name: postgres-secret
+        # Monta o volume no diretório de dados do Postgres
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-storage
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+# 4. O Serviço (A "Porta de Entrada" interna)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc # <--- ESTE NOME É IMPORTANTE PARA A URL
+spec:
+  # ClusterIP significa que só é acessível de DENTRO do cluster (seguro)
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432

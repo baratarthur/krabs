@@ -1,0 +1,102 @@
+from flask import Flask, request, jsonify
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from cronjob import create_cron_job
+
+from models import engine, InfrastructureManager, Cluster, Application
+
+app = Flask(__name__)
+manager = InfrastructureManager(engine)
+
+# --- Endpoints de Clusters ---
+
+@app.route('/clusters', methods=['POST'])
+def create_cluster():
+    data = request.json
+    
+    if not data or 'name' not in data or 'region' not in data:
+        return jsonify({"error": "Campos 'name' e 'region' são obrigatórios."}), 400
+
+    try:
+        cluster = manager.create_cluster(data['name'], data['region'])
+        cluster_info = cluster.to_dict()
+        create_cron_job(cluster_info["name"], "fake_url")
+
+        return jsonify(cluster_info), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/clusters/<name>', methods=['DELETE'])
+def delete_cluster(name):
+    try:
+        # Usa o Manager criado anteriormente
+        cluster = manager.delete_cluster(name)
+        return jsonify(cluster.to_dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/clusters', methods=['GET'])
+def list_clusters():
+    with Session(engine) as session:
+        stmt = select(Cluster)
+        clusters = session.scalars(stmt).all()
+        return jsonify([c.to_dict() for c in clusters]), 200
+
+# --- Endpoints de Applications ---
+
+@app.route('/applications', methods=['POST'])
+def deploy_app():
+    data = request.json
+    
+    if not data or 'name' not in data or 'cluster_name' not in data:
+        return jsonify({"error": "Campos 'name' e 'cluster_name' são obrigatórios."}), 400
+
+    try:
+        app_obj = manager.deploy_application(data['name'], data['cluster_name'])
+        
+        if not app_obj:
+            return jsonify({"error": "Cluster não encontrado."}), 404
+        
+        create_cron_job(app_obj.name)
+
+        return jsonify(app_obj.to_dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/applications', methods=['GET'])
+def list_apps():
+    with Session(engine) as session:
+        stmt = select(Application)
+        apps = session.scalars(stmt).all()
+        return jsonify([a.to_dict() for a in apps]), 200
+    
+# --- Endpoints de Telemetria ---
+
+@app.route('/telemetry', methods=['POST'])
+def create_telemetry():
+    data = request.json
+    
+    if not data or 'name' not in data or 'value' not in data or 'cluster_name' not in data:
+        return jsonify({"error": "Campos 'name', 'value' e 'cluster_name' são obrigatórios."}), 400
+
+    try:
+        telemetry = manager.create_telemetry(data['name'], data['value'], data['cluster_name'])
+        
+        if not telemetry:
+            return jsonify({"error": "Cluster não encontrado."}), 404
+            
+        return jsonify(telemetry.to_dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/telemetry', methods=['GET'])
+def list_telemetry():
+    try:
+        telemetry_list = manager.list_telemetry()
+        return jsonify(telemetry_list), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    # Debug=True para auto-reload durante desenvolvimento
+    app.run(host='0.0.0.0', port=5002, debug=True)
