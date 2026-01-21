@@ -13,12 +13,12 @@ manager = InfrastructureManager(engine)
 @app.route('/clusters', methods=['POST'])
 def create_cluster():
     data = request.json
-    
-    if not data or 'name' not in data or 'region' not in data:
-        return jsonify({"error": "Campos 'name' e 'region' são obrigatórios."}), 400
+
+    if not data or 'name' not in data or 'ip_address' not in data:
+        return jsonify({"error": "Campos 'name' e 'ip_address' são obrigatórios."}), 400
 
     try:
-        cluster = manager.create_cluster(data['name'], data['region'])
+        cluster = manager.create_cluster(data['name'], data['ip_address'])
         cluster_info = cluster.to_dict()
         create_cron_job(cluster_info["name"], "fake_url")
 
@@ -48,11 +48,11 @@ def list_clusters():
 def deploy_app():
     data = request.json
     
-    if not data or 'name' not in data or 'cluster_name' not in data:
-        return jsonify({"error": "Campos 'name' e 'cluster_name' são obrigatórios."}), 400
+    if not data or 'name' not in data or 'cluster_name' not in data or 'port' not in data or 'config' not in data:
+        return jsonify({"error": "Campos 'name', 'cluster_name', 'port' e 'config' são obrigatórios."}), 400
 
     try:
-        app_obj = manager.deploy_application(data['name'], data['cluster_name'])
+        app_obj = manager.deploy_application(data['name'], data['cluster_name'], data['port'], data['config'])
         
         if not app_obj:
             return jsonify({"error": "Cluster não encontrado."}), 404

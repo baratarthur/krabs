@@ -19,7 +19,7 @@ class Cluster(Base):
     __tablename__ = "clusters"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
-    region: Mapped[str] = mapped_column(String(30))
+    ip_address: Mapped[str] = mapped_column(String(15), default="0.0.0.0")
     applications: Mapped[list["Application"]] = relationship(back_populates="cluster")
     telemetries: Mapped[list["Telemetry"]] = relationship(back_populates="cluster")
 
@@ -28,7 +28,7 @@ class Cluster(Base):
         return {
             "id": self.id,
             "name": self.name,
-            "region": self.region,
+            "ip_address": self.ip_address,
             "applications": [app.name for app in self.applications] # Lista simples de nomes
         }
 
@@ -36,7 +36,8 @@ class Application(Base):
     __tablename__ = "applications"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
-    status: Mapped[str] = mapped_column(String(20), default="stopped")
+    config: Mapped[int] = mapped_column(default=0)
+    port: Mapped[int] = mapped_column(default=8080)
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
 
@@ -44,7 +45,8 @@ class Application(Base):
         return {
             "id": self.id,
             "name": self.name,
-            "status": self.status,
+            "config": self.config,
+            "port": self.port,
             "cluster": self.cluster.name # Retorna apenas o nome do cluster
         }
     
@@ -83,9 +85,9 @@ class InfrastructureManager:
             
             return result
     
-    def create_cluster(self, name: str, region: str) -> Cluster:
+    def create_cluster(self, name: str, ip_address: str) -> Cluster:
         with Session(self.engine) as session:
-            new_cluster = Cluster(name=name, region=region)
+            new_cluster = Cluster(name=name, ip_address=ip_address)
             session.add(new_cluster)
             session.commit()
             
@@ -152,8 +154,8 @@ class InfrastructureManager:
             _ = new_telemetry.cluster
             
             return new_telemetry
-        
-    def deploy_application(self, name: str, cluster_name: str) -> Optional[Application]:
+
+    def deploy_application(self, name: str, cluster_name: str, port: int, config: int) -> Optional[Application]:
         with Session(self.engine) as session:
             # Busca o cluster pelo nome
             stmt = select(Cluster).where(Cluster.name == cluster_name)
@@ -163,7 +165,7 @@ class InfrastructureManager:
                 print(f"Erro: Cluster '{cluster_name}' não encontrado.")
                 return None
 
-            new_app = Application(name=name, status="deploying", cluster=cluster)
+            new_app = Application(name=name, status="deploying", cluster=cluster, port=port, config=config)
             session.add(new_app)
             session.commit()
             session.refresh(new_app)
