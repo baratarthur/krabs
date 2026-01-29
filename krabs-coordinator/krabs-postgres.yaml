@@ -41,6 +41,7 @@ spec:
       containers:
       - name: postgres
         image: postgres:15 # Versão estável
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5432
         # Carrega as variáveis definidas no Secret acima

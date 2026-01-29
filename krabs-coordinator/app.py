@@ -20,7 +20,7 @@ def create_cluster():
     try:
         cluster = manager.create_cluster(data['name'], data['ip_address'])
         cluster_info = cluster.to_dict()
-        create_cron_job(cluster_info["name"], "fake_url")
+        create_cron_job(cluster_info["name"], cluster_info["ip_address"])
 
         return jsonify(cluster_info), 201
     except Exception as e:

@@ -1,6 +1,6 @@
 from kubernetes import client, config
 
-def create_cron_job(target, url, type = 'watch'):
+def create_cron_job(target, ip, type = 'watch'):
     # 1. Carrega a configuração (lê o ~/.kube/config localmente)
     # Se estiver rodando DENTRO do cluster, usaria config.load_incluster_config()
     config.load_incluster_config()
@@ -13,7 +13,7 @@ def create_cron_job(target, url, type = 'watch'):
         name=f"{type}-{target}-cronjob",
         image=f"{type}:latest",
         image_pull_policy="IfNotPresent",
-        env=[client.V1EnvVar(name="TARGET", value=target), client.V1EnvVar(name="TARGET_URL", value=url)]
+        env=[client.V1EnvVar(name="TARGET", value=target), client.V1EnvVar(name="TARGET_IP", value=ip)]
     )
 
     # 4. Definindo o Pod Template (Spec do Pod)

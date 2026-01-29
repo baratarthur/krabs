@@ -5,4 +5,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-CMD ["python", "script.py"]
+CMD ["/bin/sh", "-c", "python script.py || (echo 'O script falhou, mantendo vivo por 10 min' && sleep 600)"]

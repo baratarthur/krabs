@@ -1,49 +1,65 @@
 import os
-import time
 import requests
-import sys # Importante para sair com código de erro correto
+import sys
 
-def fetch_data(url):
+# Pega variáveis de ambiente
+target_cluster = os.getenv('TARGET', 'localhost')
+target_cluster_ip = os.getenv('TARGET_IP', '0.0.0.0')
+
+# Define a URL (Verifique se o nome 'monitor-service' está correto no seu k8s)
+if 'local' in target_cluster:
+    monitor_service_url = "http://monitor-service-kube-prome-prometheus:9090/api/v1/query"
+else:
+    monitor_service_url = f"http://{target_cluster_ip}:9090/api/v1/query"
+
+query_params = {
+    "query": 'sum by (pod) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))'
+}
+
+def fetch_data(url, params):
     try:
-        # DICA: Se for serviço interno do k8s, geralmente é HTTP, não HTTPS.
-        # Se for HTTPS mesmo com certificado self-signed, use verify=False
-        response = requests.get(url, verify=False) 
+        # Request com timeout para não travar o cronjob infinitamente
+        response = requests.get(url, params=params, verify=False, timeout=10)
         response.raise_for_status()
-        return response.json() # Já retorna o objeto Python (dict ou list)
-    except requests.exceptions.RequestException as e:
+        return response.json() 
+    except Exception as e:
         print(f"Erro de conexão ao buscar dados: {e}")
         return None
 
-# # 1. Removemos o .json() extra aqui
-# data = fetch_data(os.getenv("TARGET_URL")) # Mudei para http (teste isso)
+# Execução principal
+data = fetch_data(monitor_service_url, query_params)
 
-# # 2. Verificação de segurança se data for None
-# if data is None:
-#     print("Falha ao obter dados. Encerrando.")
-#     sys.exit(1) # Sai com erro para o K8s saber que falhou
-
-# applications = data
-
-# if len(applications) == 0:
-#     print("Nenhuma aplicação encontrada.")
-#     sys.exit(0) # Sai com sucesso (0) pois não é um erro de script, apenas não tinha trabalho
+if data is None:
+    print("Falha crítica: Não foi possível contatar o Prometheus.")
+    sys.exit(1)
 
 try:
+    # PROTEÇÃO: Verifica se o Prometheus de fato retornou algum resultado
+    results = data.get('data', {}).get('result', [])
+    
+    if not results:
+        print("Aviso: Query executada, mas o Prometheus não retornou dados de CPU.")
+        sys.exit(0) # Sai com sucesso, mas avisa que não tem dado
+
+    # Pega o valor do primeiro resultado
+    cpu_value = results[0]['value'][1]
+    
     telemetry = {
         "name": "usage", 
-        "value": 2, 
-        "cluster_name": os.getenv("TARGET")
+        "value": str(cpu_value), 
+        "cluster_name": target_cluster,
     }
     
-    # Adicionado timeout e verify
-    response = requests.post(
+    # Envia para o seu serviço Krabs
+    print(f"Enviando telemetria: {telemetry}")
+    post_res = requests.post(
         "http://krabs-service:5002/telemetry", 
         json=telemetry, 
-        verify=False
+        timeout=5
     )
-    response.raise_for_status()
-    print(f"Telemetria enviada com sucesso! Status: {response.status_code}")
+    post_res.raise_for_status()
+    print(f"Sucesso! Status: {post_res.status_code}")
 
 except Exception as e:
-    print(f"Erro ao enviar telemetria: {e}")
+    print(f"Erro durante o processamento/envio: {e}")
     sys.exit(1)
