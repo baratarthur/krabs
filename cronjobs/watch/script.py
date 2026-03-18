@@ -13,7 +13,7 @@ target_cluster_ip = os.getenv('TARGET_IP', '0.0.0.0')
 if 'local' in target_cluster:
     monitor_service_url = "http://monitor-service-kube-prome-prometheus:9090/api/v1/query"
 else:
-    monitor_service_url = f"http://{target_cluster_ip}:9090/api/v1/query"
+    monitor_service_url = f"http://{target_cluster_ip}:30090/api/v1/query"
 
 query_params = {
     "query": 'sum by (pod) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))'
