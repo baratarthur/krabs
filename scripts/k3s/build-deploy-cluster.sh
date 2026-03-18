@@ -6,17 +6,17 @@ helm repo update
 
 source scripts/k3s/load-prometheus-images.sh
 
-helm install monitor-service prometheus-community/kube-prometheus-stack \
+helm upgrade --install monitor-service prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.image.pullPolicy=IfNotPresent \
-  --set prometheusOperator.image.pullPolicy=IfNotPresent \
-  --set kube-state-metrics.image.pullPolicy=IfNotPresent \
   --set grafana.enabled=false \
   --set alertmanager.enabled=false \
   --set prometheus-node-exporter.enabled=false \
   --set kubeStateMetrics.enabled=true \
   --set prometheus.prometheusSpec.replicas=1 \
   --set prometheus.service.type=NodePort \
-  --set prometheus.service.nodePort=30090
+  --set prometheus.service.nodePorts.http=30090 \
+  --set prometheus.prometheusSpec.resources.requests.memory=256Mi \
+  --set prometheus.prometheusSpec.resources.limits.memory=512Mi
 
 echo "Prometheus stack deployed."
 
