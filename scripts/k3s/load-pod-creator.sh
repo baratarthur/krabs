@@ -9,7 +9,8 @@ docker buildx build \
         --push \
         pod-creator-service
 
-sudo k3s kubectl apply -f pod-creator-service/pod-creator-rbac.yaml
-
 echo "Veryfying deploied image..."
 curl -X GET http://my.private-registry.lan:5000/v2/_catalog
+
+kubectl apply -f pod-creator-service/pod-creator-rbac.yaml
+kubectl apply -f pod-creator-service/webservice-deployment.yaml

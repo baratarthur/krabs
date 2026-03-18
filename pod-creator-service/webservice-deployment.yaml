@@ -15,7 +15,7 @@ spec:
       serviceAccountName: pod-creator-sa
       containers:
       - name: webservice
-        image: pod-creator-webservice:latest
+        image: my.private-registry.lan:5000/pod-creator-webservice:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5001
