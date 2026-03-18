@@ -1,6 +1,6 @@
 #!/bin/bash
-minikube delete
-minikube start --cpus=6 --memory=2048mb --driver=docker
+# minikube delete
+# minikube start --cpus=6 --memory=2048mb --driver=docker
 
 echo "Prometheus installed. Building krabs images..."
 # load

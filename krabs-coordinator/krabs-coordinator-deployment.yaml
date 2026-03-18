@@ -15,7 +15,7 @@ spec:
       serviceAccountName: cronojobs-manager-sa
       containers:
       - name: webservice
-        image: krabs-coordinator:latest
+        image: my.private-registry.lan:5000/krabs-coordinator:latest
         imagePullPolicy: IfNotPresent
         command: ["/bin/sh", "-c"]
         args:

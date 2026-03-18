@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "Building $1 image..."
+docker buildx build \
+        --platform linux/amd64 \
+        --provenance=false \
+        --sbom=false \
+        -t my.private-registry.lan:5000/pod-creator-webservice:latest \
+        --push \
+        pod-creator-service
+
+sudo k3s kubectl apply -f pod-creator-service/pod-creator-rbac.yaml
+
+echo "Veryfying deploied image..."
+curl -X GET http://my.private-registry.lan:5000/v2/_catalog

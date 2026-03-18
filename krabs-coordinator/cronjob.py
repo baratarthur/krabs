@@ -35,7 +35,7 @@ def create_cron_job(target, ip, type = 'watch'):
 
     # 6. Definindo o CronJob Spec (Agendamento + Job Template)
     cron_spec = client.V1CronJobSpec(
-        schedule="*/1 * * * *",  # A cada minuto
+        schedule="*/* * * * *",  # A cada minuto
         job_template=job_template,
         successful_jobs_history_limit=1
     )
