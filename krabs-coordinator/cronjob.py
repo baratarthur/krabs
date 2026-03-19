@@ -11,7 +11,7 @@ def create_cron_job(target, ip, type = 'watch'):
     # 3. Definindo o Container (O nível mais baixo)
     container = client.V1Container(
         name=f"{type}-{target}-cronjob",
-        image=f"{type}:latest",
+        image=f"my.private-registry.lan:5000/{type}:latest",
         image_pull_policy="IfNotPresent",
         env=[client.V1EnvVar(name="TARGET", value=target), client.V1EnvVar(name="TARGET_IP", value=ip)]
     )
@@ -35,7 +35,7 @@ def create_cron_job(target, ip, type = 'watch'):
 
     # 6. Definindo o CronJob Spec (Agendamento + Job Template)
     cron_spec = client.V1CronJobSpec(
-        schedule="*/* * * * *",  # A cada minuto
+        schedule="*/1 * * * *",  # A cada minuto
         job_template=job_template,
         successful_jobs_history_limit=1
     )
@@ -50,11 +50,8 @@ def create_cron_job(target, ip, type = 'watch'):
 
     # 8. Enviando para o Cluster
     namespace = "default"
-    try:
-        api_response = batch_v1.create_namespaced_cron_job(
-            namespace=namespace,
-            body=cron_job
-        )
-        print(f"CronJob criado com sucesso. Status: {api_response.status}")
-    except client.exceptions.ApiException as e:
-        print(f"Erro ao criar CronJob: {e}")
+    api_response = batch_v1.create_namespaced_cron_job(
+        namespace=namespace,
+        body=cron_job
+    )
+    print(f"CronJob criado com sucesso. Status: {api_response.status}")

@@ -1,9 +1,6 @@
 import os
 import requests
 import sys
-import time
-
-time.sleep(10) # sleep 10 seconds, period of adaptation
 
 # Pega variáveis de ambiente
 target_cluster = os.getenv('TARGET', 'localhost')

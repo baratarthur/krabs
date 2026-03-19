@@ -16,7 +16,7 @@ spec:
       containers:
       - name: webservice
         image: my.private-registry.lan:5000/krabs-coordinator:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         command: ["/bin/sh", "-c"]
         args:
           - >-
