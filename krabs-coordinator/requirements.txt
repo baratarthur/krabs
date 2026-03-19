@@ -5,4 +5,4 @@ Flask
 alembic
 python-dotenv
 kubernetes
-uvicorn
+gunicorn
