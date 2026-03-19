@@ -17,6 +17,8 @@ query_params = {
     "query": 'sum by (pod) (rate(container_cpu_usage_seconds_total[1m]))'
 }
 
+print(monitor_service_url)
+
 def fetch_data(url, params):
     try:
         # Request com timeout para não travar o cronjob infinitamente
@@ -35,6 +37,8 @@ if data is None:
     sys.exit(1)
 
 try:
+    print("data: ", data)
+    print("data: ", data.get('data', {}))
     # PROTEÇÃO: Verifica se o Prometheus de fato retornou algum resultado
     results = data.get('data', {}).get('result', [])
     
