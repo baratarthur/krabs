@@ -10,7 +10,6 @@ metadata:
   name: cronjobs-manager-role
   namespace: default
 rules:
-  # O grupo da API de CronJobs é "batch"
 - apiGroups: ["batch"]
   resources: ["cronjobs", "jobs"]
   # Verbos: o que pode fazer (create é o mais importante para você)

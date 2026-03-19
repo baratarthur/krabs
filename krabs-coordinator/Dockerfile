@@ -7,6 +7,4 @@ COPY . .
 
 EXPOSE 5002
 
-ENV FLASK_APP=app.py
-
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5002"]
+CMD ["uvicorn", "main:app", "--workers", "2", "--host=0.0.0.0", "--port=5002"]

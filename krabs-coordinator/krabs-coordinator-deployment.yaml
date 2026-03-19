@@ -13,6 +13,7 @@ spec:
         app: krabs-coordinator
     spec:
       serviceAccountName: cronojobs-manager-sa
+      automountServiceAccountToken: true
       containers:
       - name: webservice
         image: my.private-registry.lan:5000/krabs-coordinator:latest
@@ -28,6 +29,8 @@ spec:
             python -m flask run --host=0.0.0.0 --port=5002
         ports:
         - containerPort: 5002
+        - targetPort: 5002
+        - nodePort: 5002
         env:
           - name: POD_NAMESPACE
             valueFrom:
