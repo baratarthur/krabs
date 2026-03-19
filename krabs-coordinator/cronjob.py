@@ -12,7 +12,7 @@ def create_cron_job(target, ip, type = 'watch'):
     container = client.V1Container(
         name=f"{type}-{target}-cronjob",
         image=f"my.private-registry.lan:5000/{type}:latest",
-        image_pull_policy="IfNotPresent",
+        image_pull_policy="Always",
         env=[client.V1EnvVar(name="TARGET", value=target), client.V1EnvVar(name="TARGET_IP", value=ip)]
     )
 
