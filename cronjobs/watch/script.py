@@ -1,5 +1,6 @@
 import os
 import requests
+from functools import reduce
 import sys
 
 # Pega variáveis de ambiente
@@ -13,7 +14,7 @@ else:
     monitor_service_url = f"http://{target_cluster_ip}:30090/api/v1/query"
 
 query_params = {
-    "query": 'sum by (pod) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))'
+    "query": 'sum by (pod) (rate(container_cpu_usage_seconds_total[1m]))'
 }
 
 def fetch_data(url, params):
@@ -42,8 +43,11 @@ try:
         sys.exit(0) # Sai com sucesso, mas avisa que não tem dado
 
     # Pega o valor do primeiro resultado
-    cpu_value = results[0]['value'][1]
     
+    cpu_value = reduce(lambda a, b: a + b, map(lambda obj: float(obj['value'][1]), results))
+    
+    print("Total cpu usage: ", cpu_value)
+
     telemetry = {
         "name": "usage", 
         "value": str(cpu_value), 
