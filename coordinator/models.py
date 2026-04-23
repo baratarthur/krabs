@@ -1,16 +1,14 @@
 import os
+from datetime import datetime, timedelta, timezone # CORREÇÃO: timezone importado
 from typing import Optional
-from sqlalchemy import String, ForeignKey, select
+from sqlalchemy import String, ForeignKey, select, func, desc
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 load_dotenv()
 
 engine = create_engine(os.getenv("DATABASE_URL"), echo=True)
-
-load_dotenv()
 
 class Base(DeclarativeBase):
     pass
@@ -20,16 +18,15 @@ class Cluster(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     ip_address: Mapped[str] = mapped_column(String(15), default="0.0.0.0")
+    
     applications: Mapped[list["Application"]] = relationship(back_populates="cluster")
-    telemetries: Mapped[list["Telemetry"]] = relationship(back_populates="cluster")
 
-    # Novo método para serialização
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "ip_address": self.ip_address,
-            "applications": [app.name for app in self.applications] # Lista simples de nomes
+            "applications": [app.name for app in self.applications]
         }
 
 class Application(Base):
@@ -38,6 +35,10 @@ class Application(Base):
     name: Mapped[str] = mapped_column(String(50))
     config: Mapped[int] = mapped_column(default=0)
     port: Mapped[int] = mapped_column(default=8080)
+    
+    # CORREÇÃO: Coluna 'status' mantida para bater com o deploy_application
+    status: Mapped[str] = mapped_column(String(20), default="unknown") 
+    
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
 
@@ -47,25 +48,25 @@ class Application(Base):
             "name": self.name,
             "config": self.config,
             "port": self.port,
-            "cluster": self.cluster.name # Retorna apenas o nome do cluster
+            "status": self.status,
+            "cluster": self.cluster.name if self.cluster else None
         }
     
 class Telemetry(Base):
     __tablename__ = "telemetry"
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50))
+    target: Mapped[str] = mapped_column(String(50))
+    type: Mapped[str] = mapped_column(String(30))
     value: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
-    cluster: Mapped["Cluster"] = relationship(back_populates="telemetries")
-
-    # Novo método para serialização
     def to_dict(self):
         return {
             "id": self.id,
-            "name": self.name,
+            "target": self.target,
+            "type": self.type,
             "value": self.value,
-            "cluster": self.cluster.name # Retorna apenas o nome do cluster
+            # Sem referência ao cluster aqui
         }
 
 class InfrastructureManager:
@@ -74,15 +75,9 @@ class InfrastructureManager:
 
     def list_clusters(self):
         with Session(self.engine) as session:
-            # A MÁGICA ESTÁ AQUI: .options(selectinload(...))
             stmt = select(Cluster).options(selectinload(Cluster.applications))
-            
             clusters = session.scalars(stmt).all()
-            
-            # Agora podemos converter para dict mesmo se a sessão fechar depois,
-            # pois os dados de 'applications' já estão na memória.
             result = [c.to_dict() for c in clusters]
-            
             return result
     
     def create_cluster(self, name: str, ip_address: str) -> Cluster:
@@ -90,74 +85,54 @@ class InfrastructureManager:
             new_cluster = Cluster(name=name, ip_address=ip_address)
             session.add(new_cluster)
             session.commit()
-            
-            # Atualiza o objeto com o ID gerado pelo banco
             session.refresh(new_cluster) 
-            
-            # --- A CORREÇÃO ESTÁ AQUI ---
-            # Acessamos a propriedade 'applications' para que o SQLAlchemy 
-            # carregue a lista (vazia) na memória AGORA, enquanto a sessão está aberta.
-            # Isso evita o "Lazy Load" fora da sessão.
             _ = new_cluster.applications 
-            
-            # Opcional: Se quiser ser explícito e evitar query desnecessária (já que é novo):
-            # new_cluster.applications = [] 
-            
             return new_cluster
         
     def delete_cluster(self, name: str) -> Optional[Cluster]:
         with Session(self.engine) as session:
-            # 1. Primeiro, BUSCAMOS o objeto real (executando a query)
             stmt = select(Cluster).options(selectinload(Cluster.applications)).where(Cluster.name == name)
-            
-            # Usamos .scalar() para pegar um único resultado (ou None)
             cluster = session.scalar(stmt)
 
-            # 2. Verificamos se ele foi encontrado
             if not cluster:
-                return None  # Ou lançar uma exceção, dependendo da sua regra
+                return None  
 
-            # 3. Agora sim, deletamos o objeto
             session.delete(cluster)
             session.commit()
-            
-            # O objeto 'cluster' ainda existe na memória do Python com os dados antigos,
-            # mesmo tendo sido removido do banco.
             return cluster
 
-    def list_telemetry(self):
+    def list_telemetry(self, telemetry_type: Optional[str] = None, minutes: Optional[int] = None):
         with Session(self.engine) as session:
-            # A MÁGICA ESTÁ AQUI: .options(selectinload(...))
-            stmt = select(Telemetry).options(selectinload(Telemetry.cluster)) # CORRECT
+            # CORREÇÃO: Removido o '.options(selectinload(Telemetry.cluster))' pois não existe relação
+            stmt = select(Telemetry)
+            
+            if telemetry_type:
+                stmt = stmt.where(Telemetry.type == telemetry_type)
+            
+            if minutes:
+                cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+                stmt = stmt.where(Telemetry.created_at >= cutoff_time)
+            
+            stmt = stmt.order_by(desc(Telemetry.created_at))
             
             telemetry = session.scalars(stmt).all()
-            
-            # Agora podemos converter para dict mesmo se a sessão fechar depois,
-            # pois os dados de 'applications' já estão na memória.
             result = [t.to_dict() for t in telemetry]
-            
             return result
 
-    def create_telemetry(self, name: str, value: str, cluster_name: str) -> Telemetry:
+    def create_telemetry(self, target: str, value: str, telemetry_type: str) -> Telemetry:
         with Session(self.engine) as session:
-            stmt = select(Cluster).where(Cluster.name == cluster_name)
-            cluster = session.scalar(stmt)
-
-            if not cluster:
-                print(f"Erro: Cluster '{cluster_name}' não encontrado.")
-                return None
-
-            new_telemetry = Telemetry(name=name, value=value, cluster=cluster)
+            new_telemetry = Telemetry(target=target, value=value, type=telemetry_type)
             session.add(new_telemetry)
             session.commit()
             session.refresh(new_telemetry)
-            _ = new_telemetry.cluster
+            
+            # CORREÇÃO: A linha '_ = new_telemetry.cluster' foi removida, 
+            # pois não há lazy load de cluster a ser resolvido aqui.
             
             return new_telemetry
 
     def deploy_application(self, name: str, cluster_name: str, port: int, config: int) -> Optional[Application]:
         with Session(self.engine) as session:
-            # Busca o cluster pelo nome
             stmt = select(Cluster).where(Cluster.name == cluster_name)
             cluster = session.scalar(stmt)
             

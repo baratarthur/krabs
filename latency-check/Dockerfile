@@ -9,4 +9,4 @@ EXPOSE 5001
 
 ENV FLASK_APP=app.py
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5001"]
+CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:5003", "main:app"]

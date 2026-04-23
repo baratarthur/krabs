@@ -76,11 +76,11 @@ def list_apps():
 def create_telemetry():
     data = request.json
     
-    if not data or 'name' not in data or 'value' not in data or 'cluster_name' not in data:
-        return jsonify({"error": "Campos 'name', 'value' e 'cluster_name' são obrigatórios."}), 400
+    if not data or 'target' not in data or 'type' not in data or 'value' not in data:
+        return jsonify({"error": "Campos 'target', 'type' e 'value' são obrigatórios."}), 400
 
     try:
-        telemetry = manager.create_telemetry(data['name'], data['value'], data['cluster_name'])
+        telemetry = manager.create_telemetry(data['target'], data['value'], data['type'])
         
         if not telemetry:
             return jsonify({"error": "Cluster não encontrado."}), 404
@@ -92,7 +92,10 @@ def create_telemetry():
 @app.route('/telemetry', methods=['GET'])
 def list_telemetry():
     try:
-        telemetry_list = manager.list_telemetry()
+        telemetry_type = request.args.get('type')  # ?type=cpu | ?type=latency
+        minutes = request.args.get('minutes', type=int)  # ?minutes=60
+        
+        telemetry_list = manager.list_telemetry(telemetry_type=telemetry_type, minutes=minutes)
         return jsonify(telemetry_list), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

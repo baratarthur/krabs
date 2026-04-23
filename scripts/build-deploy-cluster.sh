@@ -16,4 +16,4 @@ helm install monitor-service prometheus-community/kube-prometheus-stack \
 
 echo "Prometheus stack deployed."
 
-source ./scripts/build-deploy-services.sh
+# source ./scripts/build-deploy-services.sh

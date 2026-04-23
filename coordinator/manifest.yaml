@@ -16,6 +16,8 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: webservice
+        # image: krabs-coordinator:latest
+        # imagePullPolicy: IfNotPresent
         image: my.private-registry.lan:5000/krabs-coordinator:latest
         imagePullPolicy: Always
         command: ["/bin/sh", "-c"]

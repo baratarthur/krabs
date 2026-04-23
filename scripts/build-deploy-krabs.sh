@@ -8,8 +8,8 @@ source scripts/load-cronjob.sh watch
 source scripts/load-krabs-coordinator.sh
 
 # deploy
-kubectl apply -f krabs-coordinator/krabs-postgres.yaml
+kubectl apply -f coordinator/krabs-postgres.yaml
 sleep 10
-kubectl apply -f krabs-coordinator/krabs-coordinator-deployment.yaml
+kubectl apply -f coordinator/manifest.yaml
 sleep 10
 kubectl port-forward service/krabs-service 5002:5002
