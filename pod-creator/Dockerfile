@@ -9,4 +9,4 @@ EXPOSE 5001
 
 ENV FLASK_APP=app.py
 
-CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:5002", "main:app"]
+CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:5001", "app:app"]
