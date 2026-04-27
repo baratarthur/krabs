@@ -12,7 +12,6 @@ spec:
       labels:
         app: latency-check
     spec:
-      serviceAccountName: latency-check-sa
       containers:
       - name: webservice
         image: my.private-registry.lan:5000/latency-check-webservice:latest
