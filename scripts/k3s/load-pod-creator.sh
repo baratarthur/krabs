@@ -2,6 +2,7 @@
 
 echo "Building $1 image..."
 docker buildx build \
+        --no-cache \
         --platform linux/amd64 \
         --provenance=false \
         --sbom=false \
