@@ -25,7 +25,8 @@ def upgrade() -> None:
     op.alter_column('applications', 'config',
                existing_type=sa.VARCHAR(length=2),
                type_=sa.Integer(),
-               existing_nullable=False)
+               existing_nullable=True,
+               postgresql_using='config::integer')
     op.add_column('telemetry', sa.Column('target', sa.String(length=50), nullable=False))
     op.add_column('telemetry', sa.Column('type', sa.String(length=30), nullable=False))
     op.add_column('telemetry', sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False))
