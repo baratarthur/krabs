@@ -101,10 +101,13 @@ class InfrastructureManager:
             session.commit()
             return cluster
 
-    def list_telemetry(self, telemetry_type: Optional[str] = None, minutes: Optional[int] = None):
+    def list_telemetry(self, target: Optional[str] = None, telemetry_type: Optional[str] = None, minutes: Optional[int] = None):
         with Session(self.engine) as session:
             # CORREÇÃO: Removido o '.options(selectinload(Telemetry.cluster))' pois não existe relação
             stmt = select(Telemetry)
+            
+            if target:
+                stmt = stmt.where(Telemetry.target == target)
             
             if telemetry_type:
                 stmt = stmt.where(Telemetry.type == telemetry_type)

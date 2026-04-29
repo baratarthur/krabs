@@ -92,10 +92,11 @@ def create_telemetry():
 @app.route('/telemetry', methods=['GET'])
 def list_telemetry():
     try:
+        target = request.args.get('target')  # ?target=cluster1 | ?target=app1
         telemetry_type = request.args.get('type')  # ?type=cpu | ?type=latency
         minutes = request.args.get('minutes', type=int)  # ?minutes=60
         
-        telemetry_list = manager.list_telemetry(telemetry_type=telemetry_type, minutes=minutes)
+        telemetry_list = manager.list_telemetry(target=target, telemetry_type=telemetry_type, minutes=minutes)
         return jsonify(telemetry_list), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
