@@ -37,7 +37,9 @@ def create_cron_job(target, ip, type = 'watch'):
     cron_spec = client.V1CronJobSpec(
         schedule="*/1 * * * *",  # A cada minuto
         job_template=job_template,
-        successful_jobs_history_limit=1
+        concurrency_policy="Forbid",
+        failed_jobs_history_limit=1,
+        successful_jobs_history_limit=3,
     )
 
     # 7. O Objeto CronJob Final (Metadata + Spec)
