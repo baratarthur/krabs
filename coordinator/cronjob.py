@@ -1,19 +1,26 @@
 from kubernetes import client, config
 
-def create_cron_job(target, ip, type = 'watch'):
+def create_cron_job(target, ip, type = 'watch', cluster_name = None):
     # 1. Carrega a configuração (lê o ~/.kube/config localmente)
     # Se estiver rodando DENTRO do cluster, usaria config.load_incluster_config()
     config.load_incluster_config()
 
     # 2. Define a API que lida com CronJobs (BatchV1)
     batch_v1 = client.BatchV1Api()
+    APP_CICLE = 1 if type == 'watch' else 3 # watch é mais frequente, adapt é mais esporádico
+
+    environment_vars = [
+        client.V1EnvVar(name="TARGET", value=target),
+        client.V1EnvVar(name="TARGET_IP", value=ip)]
+
+    if cluster_name: environment_vars.append(client.V1EnvVar(name="CLUSTER_NAME", value=cluster_name))
 
     # 3. Definindo o Container (O nível mais baixo)
     container = client.V1Container(
         name=f"{type}-{target}-cronjob",
         image=f"my.private-registry.lan:5000/{type}:latest",
         image_pull_policy="Always",
-        env=[client.V1EnvVar(name="TARGET", value=target), client.V1EnvVar(name="TARGET_IP", value=ip)]
+        env=environment_vars
     )
 
     # 4. Definindo o Pod Template (Spec do Pod)
@@ -35,7 +42,7 @@ def create_cron_job(target, ip, type = 'watch'):
 
     # 6. Definindo o CronJob Spec (Agendamento + Job Template)
     cron_spec = client.V1CronJobSpec(
-        schedule="*/1 * * * *",  # A cada minuto
+        schedule=f"*/{APP_CICLE} * * * *",  # A cada APP_CICLE minutos
         job_template=job_template,
         concurrency_policy="Forbid",
         failed_jobs_history_limit=1,

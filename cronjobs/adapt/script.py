@@ -1,47 +1,52 @@
+import os
 import requests
-import sys # Importante para sair com código de erro correto
+import sys
+import time
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+APP_CICLE = 3 # em minutos
+
+target_app = os.getenv('TARGET', 'localhost')
+target_app_ip = os.getenv('TARGET_IP', '0.0.0.0:5002')
+cluster_name = os.getenv('CLUSTER_NAME', 'unknown')
 
 def fetch_data(url):
     try:
-        # DICA: Se for serviço interno do k8s, geralmente é HTTP, não HTTPS.
-        # Se for HTTPS mesmo com certificado self-signed, use verify=False
         response = requests.get(url, verify=False) 
         response.raise_for_status()
-        return response.json() # Já retorna o objeto Python (dict ou list)
+        return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Erro de conexão ao buscar dados: {e}")
         return None
 
-# 1. Removemos o .json() extra aqui
-data = fetch_data("http://krabs-service:5002/applications") # Mudei para http (teste isso)
-
-# 2. Verificação de segurança se data for None
-if data is None:
-    print("Falha ao obter dados. Encerrando.")
-    sys.exit(1) # Sai com erro para o K8s saber que falhou
-
-applications = data
-
-if len(applications) == 0:
-    print("Nenhuma aplicação encontrada.")
-    sys.exit(0) # Sai com sucesso (0) pois não é um erro de script, apenas não tinha trabalho
-
-try:
-    telemetry = {
-        "name": "usage", 
-        "value": 2, 
-        "cluster_name": applications[0].get("cluster", "unknown")
-    }
-    
-    # Adicionado timeout e verify
-    response = requests.post(
-        "http://krabs-service:5002/telemetry", 
-        json=telemetry, 
-        verify=False
-    )
-    response.raise_for_status()
-    print(f"Telemetria enviada com sucesso! Status: {response.status_code}")
-
-except Exception as e:
-    print(f"Erro ao enviar telemetria: {e}")
+cluster_usage = fetch_data(f"http://krabs-service:5002/telemetry?type=usage&minutes={APP_CICLE}&target={cluster_name}")
+if cluster_usage is None:
+    print("Falha ao obter dados do cluster. Encerrando.")
     sys.exit(1)
+
+app_latency = fetch_data(f"http://krabs-service:5002/telemetry?type=latency&minutes={APP_CICLE}&target={target_app}")
+if app_latency is None:
+    print("Falha ao obter dados de latência. Encerrando.")
+    sys.exit(1)
+
+app_latency.sort(key=lambda x: x['created_at'], reverse=True)
+app_latency_sorted_by_creation = np.array([int(latency.get("value", "0")) for latency in app_latency])
+cluster_order = np.array([[i] for i in range(len(app_latency))])
+model = LinearRegression()
+model.fit(cluster_order, app_latency_sorted_by_creation)
+
+slope = model.coef_[0]
+
+if slope > 0:
+    print("Latência aumentando, sinal de que o cluster pode estar sobrecarregado. Considerar reduzir carga ou escalar.")
+elif slope < 0:
+    print("Latência diminuindo, sinal de que o cluster pode estar subutilizado.")
+else:
+    print("Latência estável.")
+
+# if current cluster is occupied, send telemetry to app to reduce load
+# all_clusters = fetch_data("http://krabs-service:5002/clusters")
+# if all_clusters is None:
+#     print("Falha ao obter lista de clusters. Encerrando.")
+#     sys.exit(1)

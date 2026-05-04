@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone # CORREÇÃO: timezone importado
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlalchemy import String, ForeignKey, select, func, desc
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
@@ -35,8 +35,8 @@ class Application(Base):
     name: Mapped[str] = mapped_column(String(50))
     config: Mapped[int] = mapped_column(default=0)
     port: Mapped[int] = mapped_column(default=8080)
-    
-    # CORREÇÃO: Coluna 'status' mantida para bater com o deploy_application
+
+    num_replicas: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String(20), default="unknown") 
     
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
@@ -49,7 +49,8 @@ class Application(Base):
             "config": self.config,
             "port": self.port,
             "status": self.status,
-            "cluster": self.cluster.name if self.cluster else None
+            "cluster": self.cluster.name if self.cluster else None,
+            "num_replicas": self.num_replicas
         }
     
 class Telemetry(Base):
@@ -66,7 +67,7 @@ class Telemetry(Base):
             "target": self.target,
             "type": self.type,
             "value": self.value,
-            # Sem referência ao cluster aqui
+            "created_at": self.created_at.timestamp()
         }
 
 class InfrastructureManager:
@@ -103,7 +104,6 @@ class InfrastructureManager:
 
     def list_telemetry(self, target: Optional[str] = None, telemetry_type: Optional[str] = None, minutes: Optional[int] = None):
         with Session(self.engine) as session:
-            # CORREÇÃO: Removido o '.options(selectinload(Telemetry.cluster))' pois não existe relação
             stmt = select(Telemetry)
             
             if target:
@@ -127,11 +127,7 @@ class InfrastructureManager:
             new_telemetry = Telemetry(target=target, value=value, type=telemetry_type)
             session.add(new_telemetry)
             session.commit()
-            session.refresh(new_telemetry)
-            
-            # CORREÇÃO: A linha '_ = new_telemetry.cluster' foi removida, 
-            # pois não há lazy load de cluster a ser resolvido aqui.
-            
+            session.refresh(new_telemetry)            
             return new_telemetry
 
     def deploy_application(self, name: str, cluster_name: str, port: int, config: int) -> Optional[Application]:

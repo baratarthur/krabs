@@ -41,6 +41,15 @@ def list_clusters():
         stmt = select(Cluster)
         clusters = session.scalars(stmt).all()
         return jsonify([c.to_dict() for c in clusters]), 200
+    
+@app.route('/clusters/<name>', methods=['GET'])
+def get_cluster(name):
+    with Session(engine) as session:
+        stmt = select(Cluster).where(Cluster.name == name)
+        cluster = session.scalar(stmt)
+        if not cluster:
+            return jsonify({"error": "Cluster não encontrado."}), 404
+        return jsonify(cluster.to_dict()), 200
 
 # --- Endpoints de Applications ---
 
@@ -57,7 +66,7 @@ def deploy_app():
         if not app_obj:
             return jsonify({"error": "Cluster não encontrado."}), 404
         
-        create_cron_job(app_obj.name)
+        create_cron_job(app_obj.name, f"{app_obj.ip_address}:{app_obj.port}", type='adapt', cluster_name=app_obj.cluster_name)
 
         return jsonify(app_obj.to_dict()), 201
     except Exception as e:
@@ -69,6 +78,15 @@ def list_apps():
         stmt = select(Application)
         apps = session.scalars(stmt).all()
         return jsonify([a.to_dict() for a in apps]), 200
+    
+@app.route('/applications/<name>', methods=['GET'])
+def get_app(name):
+    with Session(engine) as session:
+        stmt = select(Application).where(Application.name == name)
+        app_obj = session.scalar(stmt)
+        if not app_obj:
+            return jsonify({"error": "Aplicação não encontrada."}), 404
+        return jsonify(app_obj.to_dict()), 200
     
 # --- Endpoints de Telemetria ---
 
