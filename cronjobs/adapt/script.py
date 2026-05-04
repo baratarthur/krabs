@@ -24,15 +24,20 @@ cluster_usage = fetch_data(f"http://krabs-service:5002/telemetry?type=usage&minu
 if cluster_usage is None:
     print("Falha ao obter dados do cluster. Encerrando.")
     sys.exit(1)
+print(f"cluster usage: {cluster_usage}")
+
 
 app_latency = fetch_data(f"http://krabs-service:5002/telemetry?type=latency&minutes={APP_CICLE}&target={target_app}")
 if app_latency is None:
     print("Falha ao obter dados de latência. Encerrando.")
     sys.exit(1)
+print(f"app latency: {app_latency}")
 
 app_latency.sort(key=lambda x: x['created_at'], reverse=True)
 app_latency_sorted_by_creation = np.array([int(latency.get("value", "0")) for latency in app_latency])
 cluster_order = np.array([[i] for i in range(len(app_latency))])
+print(f"app latency sorted by creation: {app_latency_sorted_by_creation}")
+print(f"cluster order: {cluster_order}")
 model = LinearRegression()
 model.fit(cluster_order, app_latency_sorted_by_creation)
 
