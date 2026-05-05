@@ -3,6 +3,5 @@ python-dotenv
 psycopg2-binary
 Flask
 alembic
-python-dotenv
 kubernetes
 gunicorn

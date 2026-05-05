@@ -66,11 +66,40 @@ def deploy_app():
         if not app_obj:
             return jsonify({"error": "Cluster não encontrado."}), 404
         
-        create_cron_job(app_obj.name, f"{app_obj.ip_address}:{app_obj.port}", type='adapt', cluster_name=app_obj.cluster_name)
+        create_cron_job(app_obj.name, f"{app_obj.cluster.ip_address}:{app_obj.port}", type='adapt', cluster_name=app_obj.cluster.name)
 
         return jsonify(app_obj.to_dict()), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/applications/<name>', methods=['PUT'])
+def update_app(name):
+    data = request.json
+    
+    if not data or 'num_replicas' not in data or 'config' not in data:
+        return jsonify({"error": "Campos 'num_replicas' e 'config' são obrigatórios."}), 400
+
+    try:
+        app_obj = manager.update_application(name, data['num_replicas'], data['config'])
+        if not app_obj:
+            return jsonify({"error": "Aplicação ou Cluster não encontrado."}), 404
+
+        return jsonify(app_obj.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/applications/<name>', methods=['DELETE'])
+def delete_app(name):
+    with Session(engine) as session:
+        stmt = select(Application).where(Application.name == name)
+        app_obj = session.scalar(stmt)
+
+        if not app_obj:
+            return jsonify({"error": "Aplicação não encontrada."}), 404
+
+        session.delete(app_obj)
+        session.commit()
+        return jsonify(app_obj.to_dict()), 200
 
 @app.route('/applications', methods=['GET'])
 def list_apps():

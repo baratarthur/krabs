@@ -74,6 +74,22 @@ class InfrastructureManager:
     def __init__(self, engine):
         self.engine = engine
 
+    def update_application(self, name: str, num_replicas: int, config: int) -> Optional[Application]:
+        with Session(self.engine) as session:
+            stmt = select(Application).where(Application.name == name)
+            app = session.scalar(stmt)
+
+            if not app:
+                print(f"Erro: Aplicação '{name}' não encontrada.")
+                return None
+
+            app.num_replicas = num_replicas
+            app.config = config
+            session.commit()
+            session.refresh(app)
+            _ = app.cluster
+            return app
+
     def list_clusters(self):
         with Session(self.engine) as session:
             stmt = select(Cluster).options(selectinload(Cluster.applications))
