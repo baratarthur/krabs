@@ -1,57 +1,71 @@
 import os
 import requests
 import sys
-import time
-from sklearn.linear_model import LinearRegression
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
-APP_CICLE = 3 # em minutos
+# Configurações via Environment Variables
+APP_CICLE = int(os.getenv('APP_CICLE', 3))
+TARGET_APP = os.getenv('TARGET', 'social-media-app')
+# Usando a URL que você mencionou anteriormente ou o serviço interno
+TELEMETRY_URL = os.getenv('TELEMETRY_URL', 'http://krabs-service:5002/telemetry')
+CLUSTER_NAME = os.getenv('CLUSTER_NAME', 'unknown')
 
-target_app = os.getenv('TARGET', 'localhost')
-target_app_ip = os.getenv('TARGET_IP', '0.0.0.0:5002')
-cluster_name = os.getenv('CLUSTER_NAME', 'unknown')
-
-def fetch_data(url):
+def fetch_data(url, params):
     try:
-        response = requests.get(url, verify=False) 
+        response = requests.get(url, params=params, verify=False, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Erro de conexão ao buscar dados: {e}")
+        print(f"Erro de conexão ao buscar dados ({params.get('type')}): {e}")
         return None
 
-cluster_usage = fetch_data(f"http://krabs-service:5002/telemetry?type=usage&minutes={APP_CICLE}&target={cluster_name}")
-if cluster_usage is None:
-    print("Falha ao obter dados do cluster. Encerrando.")
-    sys.exit(1)
-print(f"cluster usage: {cluster_usage}")
+def main():
+    # 1. Busca dados de Uso do Cluster
+    usage_params = {'type': 'usage', 'minutes': APP_CICLE, 'target': CLUSTER_NAME}
+    cluster_usage = fetch_data(TELEMETRY_URL, usage_params)
+    
+    # 2. Busca dados de Latência
+    latency_params = {'type': 'latency', 'minutes': APP_CICLE, 'target': TARGET_APP}
+    app_latency = fetch_data(TELEMETRY_URL, latency_params)
 
+    # Validação Crítica: Se a API falhou ou retornou lista vazia
+    if not app_latency:
+        print(f"Aviso: Nenhuma latência encontrada para '{TARGET_APP}' nos últimos {APP_CICLE} min. Encerrando ciclo.")
+        return # Sai graciosamente para o CronJob tentar na próxima vez
 
-app_latency = fetch_data(f"http://krabs-service:5002/telemetry?type=latency&minutes={APP_CICLE}&target={target_app}")
-if app_latency is None:
-    print("Falha ao obter dados de latência. Encerrando.")
-    sys.exit(1)
-print(f"app latency: {app_latency}")
+    print(f"Dados recebidos: {len(app_latency)} registros de latência.")
 
-app_latency.sort(key=lambda x: x['created_at'], reverse=True)
-app_latency_sorted_by_creation = np.array([int(latency.get("value", "0")) for latency in app_latency])
-cluster_order = np.array([[i] for i in range(len(app_latency))])
-print(f"app latency sorted by creation: {app_latency_sorted_by_creation}")
-print(f"cluster order: {cluster_order}")
-model = LinearRegression()
-model.fit(cluster_order, app_latency_sorted_by_creation)
+    # 3. Processamento de Dados
+    # Ordenar por criação (mais antigo para o mais novo para ver a tendência)
+    app_latency.sort(key=lambda x: x['created_at'])
+    
+    try:
+        # Extração de valores garantindo que sejam numéricos
+        y = np.array([float(latency.get("value", 0)) for latency in app_latency])
+        # X precisa ser 2D para o sklearn: [[0], [1], [2]...]
+        X = np.arange(len(y)).reshape(-1, 1)
 
-slope = model.coef_[0]
+        # 4. Modelo de Regressão
+        if len(y) < 2:
+            print("Dados insuficientes para calcular tendência (mínimo 2 pontos).")
+            return
 
-if slope > 0:
-    print("Latência aumentando, sinal de que o cluster pode estar sobrecarregado. Considerar reduzir carga ou escalar.")
-elif slope < 0:
-    print("Latência diminuindo, sinal de que o cluster pode estar subutilizado.")
-else:
-    print("Latência estável.")
+        model = LinearRegression()
+        model.fit(X, y)
+        slope = model.coef_[0]
 
-# if current cluster is occupied, send telemetry to app to reduce load
-# all_clusters = fetch_data("http://krabs-service:5002/clusters")
-# if all_clusters is None:
-#     print("Falha ao obter lista de clusters. Encerrando.")
-#     sys.exit(1)
+        print(f"Tendência da Latência (Slope): {slope:.4f}")
+
+        if slope > 0.5: # Threshold opcional para evitar alarmes falsos por ruído
+            print("ALERTA: Latência em subida consistente.")
+        elif slope < -0.5:
+            print("INFO: Latência em queda.")
+        else:
+            print("ESTÁVEL: Latência sem variações significativas.")
+
+    except Exception as e:
+        print(f"Erro ao processar modelo matemático: {e}")
+
+if __name__ == "__main__":
+    main()

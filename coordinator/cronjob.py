@@ -45,7 +45,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
         schedule=f"*/{APP_CICLE} * * * *",  # A cada APP_CICLE minutos
         job_template=job_template,
         concurrency_policy="Forbid",
-        failed_jobs_history_limit=1,
+        failed_jobs_history_limit=5,
         successful_jobs_history_limit=3,
     )
 
