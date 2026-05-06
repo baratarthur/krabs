@@ -10,8 +10,8 @@ app = Flask(__name__)
 def root_handler():
     return jsonify({"message": "Latency Check API"})
 
-@app.route('/create-pod', methods=['POST'])
-def create_pod_handler():
+@app.route('/check-latency', methods=['POST'])
+def check_latency_handler():
     data = request.get_json()
     if not data or 'targets' not in data:
         return jsonify({"error": "Requisição inválida. Forneça 'targets'."}), 400
@@ -41,7 +41,7 @@ def create_pod_handler():
     return jsonify({
         "message": "success",
         "metrics": metrics
-    }), 201
+    }), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003)
