@@ -41,7 +41,17 @@ def create_pod_handler():
                 "image": image_name,
                 "imagePullPolicy": "IfNotPresent",
                 "ports": [{"containerPort": app_port}], # Expor a porta é uma boa prática
-                "env": [{"name": "PORT", "value": str(app_port)}]
+                "env": [{"name": "PORT", "value": str(app_port)}],
+                "resources": {
+                    "requests": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                    },
+                    "limits": {
+                        "cpu": "1000m",
+                        "memory": "2048Mi"
+                    }
+                }
             }]
         }
     }
