@@ -10,7 +10,7 @@ metadata:
   name: pod-creator-role
 rules:
 - apiGroups: [""]
-  resources: ["pods", "services"]
+  resources: ["pods", "services", "namespaces"]
   verbs: ["create", "get", "list", "watch", "delete"]
 
 ---

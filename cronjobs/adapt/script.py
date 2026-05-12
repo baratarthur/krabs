@@ -13,7 +13,7 @@ CLUSTERS_URL = os.getenv('CLUSTERS_URL', 'http://krabs-service:5002/clusters')
 CURRENT_CLUSTER_INFO_URL = os.getenv('CLUSTER_INFO_URL', f'http://krabs-service:5002/clusters/{CLUSTER_NAME}')
 APP_INFO_URL = os.getenv('APP_INFO_URL', f'http://krabs-service:5002/applications/{TARGET_APP}')
 LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
-POD_CREATOR_URL = lambda ip: f'http://{ip}:30001/create-pod'
+POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
 
 def fetch_data(url, params):
     try:
@@ -81,24 +81,27 @@ def main():
             # print(f"Latências ordenadas: {latency_checks}")
             # next_cluster_ip = latency_checks[0]['ip_address']
             initial_port = 30300
-            initial_name = f'dana-remote-{TARGET_APP}'
             current_num_replicas = int(current_app_info['num_replicas'])
+            initial_name = f'dana-remote-{TARGET_APP}'
+            namespace = f"{initial_name}-ns-{num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
             num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
             remotes = []
+            create_data(f'{POD_CREATOR_URL(current_cluster["ip_address"])}/namespaces', body={"name": namespace})
 
             for i in range(num_replicas):
                 new_remote = {
                     "pod_name": f'{initial_name}-{i}',
+                    "namespace": namespace,
                     "image_name": "my.private-registry.lan:5000/dana-remote:latest",
-                    "app_port": initial_port + i,
+                    "app_port": initial_port + (10*num_replicas) + i, # unique port for each replica according to number of total replicas to avoid conflicts
                 }
-                create_data(POD_CREATOR_URL(current_cluster['ip_address']), body=new_remote)
+                create_data(f'{POD_CREATOR_URL(current_cluster["ip_address"])}/create-pod', body=new_remote)
                 print(f"Solicitação de criação de pod enviada: {new_remote}")
                 remotes.append({"address": current_cluster['ip_address'], "port": new_remote['app_port']})
 
-            time.sleep(15)
+            time.sleep(30)
             print(f"Remotes criados: {remotes}")
-            adaptation_url = f"http://{current_cluster['ip_address']}:{initial_port}/adapt/1"
+            adaptation_url = f"http://{current_cluster['ip_address']}:{current_app_info['port']}/adapt/1"
             create_data(adaptation_url, body=remotes)
             print(f"App adaptado")
             update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": 1})

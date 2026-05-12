@@ -16,7 +16,7 @@ core_v1_api = client.CoreV1Api()
 @app.route('/create-pod', methods=['POST'])
 def create_pod_handler():
     data = request.get_json()
-    if not data or 'pod_name' not in data or 'image_name' not in data:
+    if not data or 'pod_name' not in data or 'image_name' not in data or 'namespace' not in data:
         return jsonify({"error": "Requisição inválida. Forneça 'pod_name' e 'image_name'."}), 400
 
     pod_name = data['pod_name']
@@ -33,14 +33,15 @@ def create_pod_handler():
         "kind": "Pod",
         "metadata": {
             "name": pod_name,
-            "labels": pod_labels
+            "labels": pod_labels,
+            "namespace": namespace
         },
         "spec": {
             "containers": [{
                 "name": f"{pod_name}-container",
                 "image": image_name,
                 "imagePullPolicy": "IfNotPresent",
-                "ports": [{"containerPort": app_port}], # Expor a porta é uma boa prática
+                "ports": [{"containerPort": app_port}],
                 "env": [{"name": "PORT", "value": str(app_port)}],
                 "resources": {
                     "requests": {
@@ -60,15 +61,15 @@ def create_pod_handler():
     service_manifest = {
         "apiVersion": "v1",
         "kind": "Service",
-        "metadata": {"name": pod_name}, # Nome do Service igual ao do Pod
+        "metadata": {"name": pod_name, "namespace": namespace},
         "spec": {
-            "selector": pod_labels, # Encontra pods com este label
+            "selector": pod_labels,
             "ports": [{
                 "protocol": "TCP",
-                "port": app_port, # Porta do serviço
-                "targetPort": app_port # Porta do contêiner
+                "port": app_port,
+                "targetPort": app_port
             }],
-            "type": "ClusterIP" # Tipo para comunicação interna
+            "type": "ClusterIP"
         }
     }
 
@@ -121,6 +122,41 @@ def delete_pod_handler(pod_name):
         
         print(f"Erro na API do Kubernetes ao deletar: {e.body}")
         return jsonify({"error": "Falha ao deletar recursos.", "details": e.body}), 500
+    
+@app.route('/namespaces', methods=['POST'])
+def create_namespace():
+    data = request.json
+    namespace_name = data.get('name')
+
+    if not namespace_name:
+        return jsonify({"error": "O nome do namespace é obrigatório."}), 400
+
+    try:
+        # Criar o namespace
+        print(f"Criando o namespace '{namespace_name}'")
+        core_v1_api.create_namespace(body={"metadata": {"name": namespace_name}})
+
+        return jsonify({"message": f"Namespace '{namespace_name}' criado com sucesso."}), 201
+
+    except client.ApiException as e:
+        if e.status == 409:
+            return jsonify({"error": f"Namespace '{namespace_name}' já existe."}), 409
+        print(f"Erro na API do Kubernetes: {e.body}")
+        return jsonify({"error": "Falha ao criar namespace.", "details": e.body}), 500
+    
+@app.route('/namespaces/<string:namespace_name>', methods=['DELETE'])
+def delete_namespace(namespace_name):
+    try:
+        print(f"Deletando o namespace '{namespace_name}'")
+        core_v1_api.delete_namespace(name=namespace_name)
+
+        return jsonify({"message": f"Namespace '{namespace_name}' deletado com sucesso."}), 200
+
+    except client.ApiException as e:
+        if e.status == 404:
+            return jsonify({"error": f"Namespace '{namespace_name}' não encontrado."}), 404
+        print(f"Erro na API do Kubernetes: {e.body}")
+        return jsonify({"error": "Falha ao deletar namespace.", "details": e.body}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
