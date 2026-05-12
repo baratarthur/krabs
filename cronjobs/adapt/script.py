@@ -2,6 +2,7 @@ import os
 import requests
 import sys
 import numpy as np
+import time
 from sklearn.linear_model import LinearRegression
 
 APP_CICLE = int(os.getenv('APP_CICLE', 3))
@@ -11,18 +12,34 @@ CLUSTER_NAME = os.getenv('CLUSTER_NAME', 'unknown')
 CLUSTERS_URL = os.getenv('CLUSTERS_URL', 'http://krabs-service:5002/clusters')
 CURRENT_CLUSTER_INFO_URL = os.getenv('CLUSTER_INFO_URL', f'http://krabs-service:5002/clusters/{CLUSTER_NAME}')
 APP_INFO_URL = os.getenv('APP_INFO_URL', f'http://krabs-service:5002/applications/{TARGET_APP}')
-LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30001/check-latency'
+LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
+POD_CREATOR_URL = lambda ip: f'http://{ip}:30001/create-pod'
 
-def fetch_data(url, params, body=None):
+def fetch_data(url, params):
     try:
-        if body is not None:
-            response = requests.post(url, params=params, json=body, verify=False, timeout=10)
-        else:
-            response = requests.get(url, params=params, verify=False, timeout=10)
+        response = requests.get(url, params=params, verify=False, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Erro de conexão ao buscar dados ({params.get('type')}): {e}")
+        return None
+    
+def create_data(url, body):
+    try:
+        response = requests.post(url, json=body, verify=False, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro de conexão ao criar recurso: {e}")
+        return None
+    
+def update_data(url, body):
+    try:
+        response = requests.put(url, json=body, verify=False, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro de conexão ao atualizar recurso: {e}")
         return None
 
 def main():
@@ -57,10 +74,35 @@ def main():
         if slope > 0.5:
             print("INFO: Latência subindo.")
             current_cluster = fetch_data(CURRENT_CLUSTER_INFO_URL, params={})
-            clusters = fetch_data(CLUSTERS_URL, params={})
-            ips = [cluster['ip_address'] for cluster in clusters if cluster['name'] != CLUSTER_NAME]
-            latency_checks = fetch_data(LATENCY_CHECK_URL(current_cluster['ip_address']), params={}, body={"targets": ips})
-            print(f"Latências para outros clusters: {latency_checks}")
+            # clusters = fetch_data(CLUSTERS_URL, params={})
+            # ips = [cluster['ip_address'] for cluster in clusters]
+            # latency_checks = fetch_data(LATENCY_CHECK_URL(current_cluster['ip_address']), params={}, body={"targets": ips})
+            # latency_checks.sort(key=lambda x: x['latency_ms'])
+            # print(f"Latências ordenadas: {latency_checks}")
+            # next_cluster_ip = latency_checks[0]['ip_address']
+            initial_port = 30300
+            initial_name = f'dana-remote-{TARGET_APP}'
+            current_num_replicas = int(current_app_info['num_replicas'])
+            num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
+            remotes = []
+
+            for i in range(num_replicas):
+                new_remote = {
+                    "pod_name": f'{initial_name}-{i}',
+                    "image_name": "dana-remote:latest",
+                    "app_port": initial_port + i,
+                }
+                create_data(POD_CREATOR_URL(current_cluster['ip_address']), body=new_remote)
+                print(f"Solicitação de criação de pod enviada: {new_remote}")
+                remotes.append({"address": current_cluster['ip_address'], "port": new_remote['app_port']})
+
+            time.sleep(15)
+            print(f"Remotes criados: {remotes}")
+            adaptation_url = f"http://{current_cluster['ip_address']}:{initial_port}/adapt/1"
+            create_data(adaptation_url, body=remotes)
+            print(f"App adaptado")
+            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": 1})
+
         elif slope < -0.5:
             print("INFO: Latência em queda.")
 
