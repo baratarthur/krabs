@@ -21,6 +21,7 @@ def create_pod_handler():
 
     pod_name = data['pod_name']
     image_name = data['image_name']
+    namespace = data['namespace']
     app_port = data.get('app_port', 80)
     pod_labels = {"app": pod_name}
 
@@ -31,7 +32,7 @@ def create_pod_handler():
         "metadata": {
             "name": pod_name,
             "labels": pod_labels,
-            "namespace": data['namespace']
+            "namespace": namespace
         },
         "spec": {
             "containers": [{
@@ -58,7 +59,7 @@ def create_pod_handler():
     service_manifest = {
         "apiVersion": "v1",
         "kind": "Service",
-        "metadata": {"name": pod_name, "namespace": data['namespace']},
+        "metadata": {"name": pod_name, "namespace": namespace},
         "spec": {
             "selector": pod_labels,
             "ports": [{
@@ -71,11 +72,11 @@ def create_pod_handler():
     }
 
     try:
-        print(f"Criando o pod '{pod_name}' no namespace '{data['namespace']}'")
-        core_v1_api.create_namespaced_pod(namespace=data['namespace'], body=pod_manifest)
+        print(f"Criando o pod '{pod_name}' no namespace '{namespace}'")
+        core_v1_api.create_namespaced_pod(namespace=namespace, body=pod_manifest)
 
-        print(f"Criando o service '{pod_name}' no namespace '{data['namespace']}'")
-        core_v1_api.create_namespaced_service(namespace=data['namespace'], body=service_manifest)
+        print(f"Criando o service '{pod_name}' no namespace '{namespace}'")
+        core_v1_api.create_namespaced_service(namespace=namespace, body=service_manifest)
 
     except client.ApiException as e:
         if e.status == 409:
