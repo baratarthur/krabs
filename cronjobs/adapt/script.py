@@ -89,7 +89,7 @@ def main():
             for i in range(num_replicas):
                 new_remote = {
                     "pod_name": f'{initial_name}-{i}',
-                    "image_name": "dana-remote:latest",
+                    "image_name": "my.private-registry.lan:5000/dana-remote:latest",
                     "app_port": initial_port + i,
                 }
                 create_data(POD_CREATOR_URL(current_cluster['ip_address']), body=new_remote)
