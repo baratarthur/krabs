@@ -87,6 +87,7 @@ def main():
             namespace = f"{initial_name}-ns-{num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
             remotes = []
             create_data(f'{POD_CREATOR_URL(current_cluster["ip_address"])}/namespaces', body={"name": namespace})
+            print(f"Namespace criado: {namespace}")
 
             for i in range(num_replicas):
                 new_remote = {
