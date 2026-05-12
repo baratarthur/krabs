@@ -21,10 +21,7 @@ def create_pod_handler():
 
     pod_name = data['pod_name']
     image_name = data['image_name']
-    app_port = data.get('app_port', 80) # Porta padrão 80 se não for fornecida
-    namespace = os.getenv("POD_NAMESPACE", "default")
-    
-    # Label único para conectar o Pod e o Service
+    app_port = data.get('app_port', 80)
     pod_labels = {"app": pod_name}
 
     # --- Manifesto do Pod (com label) ---
@@ -34,7 +31,7 @@ def create_pod_handler():
         "metadata": {
             "name": pod_name,
             "labels": pod_labels,
-            "namespace": namespace
+            "namespace": data['namespace']
         },
         "spec": {
             "containers": [{
@@ -61,7 +58,7 @@ def create_pod_handler():
     service_manifest = {
         "apiVersion": "v1",
         "kind": "Service",
-        "metadata": {"name": pod_name, "namespace": namespace},
+        "metadata": {"name": pod_name, "namespace": data['namespace']},
         "spec": {
             "selector": pod_labels,
             "ports": [{
@@ -74,13 +71,11 @@ def create_pod_handler():
     }
 
     try:
-        # Criar o Pod
-        print(f"Criando o pod '{pod_name}' no namespace '{namespace}'")
-        core_v1_api.create_namespaced_pod(namespace=namespace, body=pod_manifest)
-        
-        # Criar o Service
-        print(f"Criando o service '{pod_name}' no namespace '{namespace}'")
-        core_v1_api.create_namespaced_service(namespace=namespace, body=service_manifest)
+        print(f"Criando o pod '{pod_name}' no namespace '{data['namespace']}'")
+        core_v1_api.create_namespaced_pod(namespace=data['namespace'], body=pod_manifest)
+
+        print(f"Criando o service '{pod_name}' no namespace '{data['namespace']}'")
+        core_v1_api.create_namespaced_service(namespace=data['namespace'], body=service_manifest)
 
     except client.ApiException as e:
         if e.status == 409:
@@ -88,15 +83,13 @@ def create_pod_handler():
         print(f"Erro na API do Kubernetes: {e.body}")
         return jsonify({"error": "Falha ao criar recursos no Kubernetes.", "details": e.body}), 500
 
-    # Construir a URL de DNS interna
-    # O formato curto (<service-name>:<port>) funciona dentro do mesmo namespace
     internal_url = f"http://{pod_name}:{app_port}"
 
     return jsonify({
         "message": "Pod e Service criados com sucesso!",
         "pod_name": pod_name,
         "internal_url": internal_url,
-        "full_dns_name": f"{pod_name}.{namespace}.svc.cluster.local"
+        "full_dns_name": f"{pod_name}.{data['namespace']}.svc.cluster.local"
     }), 201
 
 
