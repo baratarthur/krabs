@@ -64,3 +64,21 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
         body=cron_job
     )
     print(f"CronJob criado com sucesso. Status: {api_response.status}")
+
+def delete_cron_job(target, type = 'watch'):
+    config.load_incluster_config()
+    batch_v1 = client.BatchV1Api()
+    namespace = "default"
+    name = f"cronjob-{type}-{target}"
+    try:
+        api_response = batch_v1.delete_namespaced_cron_job(
+            name=name,
+            namespace=namespace,
+            body=client.V1DeleteOptions()
+        )
+        print(f"CronJob '{name}' deletado com sucesso. Status: {api_response.status}")
+    except client.exceptions.ApiException as e:
+        if e.status == 404:
+            print(f"CronJob '{name}' não encontrado. Nada para deletar.")
+        else:
+            print(f"Erro ao deletar CronJob '{name}': {e}")

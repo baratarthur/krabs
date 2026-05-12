@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from cronjob import create_cron_job
+from cronjob import create_cron_job, delete_cron_job
 
 from models import engine, InfrastructureManager, Cluster, Application
 
@@ -29,8 +29,8 @@ def create_cluster():
 @app.route('/clusters/<name>', methods=['DELETE'])
 def delete_cluster(name):
     try:
-        # Usa o Manager criado anteriormente
         cluster = manager.delete_cluster(name)
+        delete_cron_job(cluster.name)
         return jsonify(cluster.to_dict()), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -93,6 +93,8 @@ def delete_app(name):
     with Session(engine) as session:
         stmt = select(Application).where(Application.name == name)
         app_obj = session.scalar(stmt)
+
+        delete_cron_job(app_obj.name, type='adapt')
 
         if not app_obj:
             return jsonify({"error": "Aplicação não encontrada."}), 404
