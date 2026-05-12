@@ -82,9 +82,9 @@ def main():
             # next_cluster_ip = latency_checks[0]['ip_address']
             initial_port = 30300
             current_num_replicas = int(current_app_info['num_replicas'])
+            num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
             initial_name = f'dana-remote-{TARGET_APP}'
             namespace = f"{initial_name}-ns-{num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
-            num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
             remotes = []
             create_data(f'{POD_CREATOR_URL(current_cluster["ip_address"])}/namespaces', body={"name": namespace})
 
