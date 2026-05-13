@@ -1,9 +1,7 @@
 import os
 import requests
 import sys
-import numpy as np
 import time
-from sklearn.linear_model import LinearRegression
 
 APP_CICLE = int(os.getenv('APP_CICLE', 3))
 TARGET_APP = os.getenv('TARGET', 'social-media-app')
@@ -14,6 +12,8 @@ CURRENT_CLUSTER_INFO_URL = os.getenv('CLUSTER_INFO_URL', f'http://krabs-service:
 APP_INFO_URL = os.getenv('APP_INFO_URL', f'http://krabs-service:5002/applications/{TARGET_APP}')
 LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
 POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
+LATENCY_TRESHOLD = int(os.getenv('LATENCY_THRESHOLD', 200))
+LOW_LATENCY_TRESHOLD = int(os.getenv('LOW_LATENCY_THRESHOLD', 100))
 
 def fetch_data(url, params):
     try:
@@ -51,27 +51,18 @@ def main():
         return
 
     print(f"Dados recebidos: {len(app_latency)} registros de latência.")
-
-    app_latency.sort(key=lambda x: x['created_at'])
     
     try:
-        y = np.array([float(latency.get("value", 0)) for latency in app_latency])
-        X = np.arange(len(y)).reshape(-1, 1)
+        high_latency_counter = sum(1 for entry in app_latency if int(entry['value']) > LATENCY_TRESHOLD)
+        low_latency_counter = sum(1 for entry in app_latency if int(entry['value']) < LOW_LATENCY_TRESHOLD)
 
-        if len(y) < 2:
-            print("Dados insuficientes para calcular tendência (mínimo 2 pontos).")
-            return
-
-        model = LinearRegression()
-        model.fit(X, y)
-        slope = model.coef_[0]
-
-        print(f"Tendência da Latência (Slope): {slope:.4f}")
+        print(f"Contador de Alta Latência: {high_latency_counter}")
+        print(f"Contador de Baixa Latência: {low_latency_counter}")
 
         current_app_info = fetch_data(APP_INFO_URL, params={})
         print(f"Config atual da aplicação '{TARGET_APP}': {current_app_info}")
 
-        if slope > 0.5:
+        if high_latency_counter > (0.5 * len(app_latency)):
             print("INFO: Latência subindo.")
             current_cluster = fetch_data(CURRENT_CLUSTER_INFO_URL, params={})
             # clusters = fetch_data(CLUSTERS_URL, params={})
@@ -107,7 +98,7 @@ def main():
             print(f"App adaptado")
             update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": 1})
 
-        elif slope < -0.5:
+        elif low_latency_counter > (0.5 * len(app_latency)):
             print("INFO: Latência em queda.")
 
     except Exception as e:
