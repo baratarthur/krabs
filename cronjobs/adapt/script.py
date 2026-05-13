@@ -15,6 +15,7 @@ LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
 POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
 LATENCY_TRESHOLD = int(os.getenv('LATENCY_THRESHOLD', 200))
 LOW_LATENCY_TRESHOLD = int(os.getenv('LOW_LATENCY_THRESHOLD', 100))
+CONFIG = 4
 
 def fetch_data(url, params):
     try:
@@ -98,10 +99,10 @@ def main():
 
             time.sleep(30)
             print(f"Remotes criados: {remotes}")
-            adaptation_url = f"http://{current_cluster['ip_address']}:{current_app_info['port']}/adapt/4"
+            adaptation_url = f"http://{current_cluster['ip_address']}:{current_app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
             print(f"App adaptado")
-            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": 1})
+            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG})
 
         elif low_latency_counter > (0.5 * len(app_latency)):
             print("INFO: Latência em queda.")
