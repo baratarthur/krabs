@@ -1,4 +1,5 @@
 import os
+from urllib import response
 import requests
 import sys
 import time
@@ -17,7 +18,7 @@ LOW_LATENCY_TRESHOLD = int(os.getenv('LOW_LATENCY_THRESHOLD', 100))
 
 def fetch_data(url, params):
     try:
-        response = requests.get(url, params=params, verify=False, timeout=10)
+        response = requests.get(url, params=params, verify=False, timeout=45)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -26,16 +27,20 @@ def fetch_data(url, params):
     
 def create_data(url, body):
     try:
-        response = requests.post(url, json=body, verify=False, timeout=10)
+        response = requests.post(url, json=body, verify=False, timeout=45)
         response.raise_for_status()
         return response.json()
+    except requests.exceptions.JSONDecodeError:
+        print(f"Aviso: O recurso foi criado, mas a resposta não era JSON. Resposta: {response.text}")
+        return {"status": "sucesso", "texto": response.text}
+        
     except requests.exceptions.RequestException as e:
         print(f"Erro de conexão ao criar recurso: {e}")
         return None
     
 def update_data(url, body):
     try:
-        response = requests.put(url, json=body, verify=False, timeout=10)
+        response = requests.put(url, json=body, verify=False, timeout=45)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -93,7 +98,7 @@ def main():
 
             time.sleep(30)
             print(f"Remotes criados: {remotes}")
-            adaptation_url = f"http://{current_cluster['ip_address']}:{current_app_info['port']}/adapt/1"
+            adaptation_url = f"http://{current_cluster['ip_address']}:{current_app_info['port']}/adapt/4"
             create_data(adaptation_url, body=remotes)
             print(f"App adaptado")
             update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": 1})
