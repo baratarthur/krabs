@@ -56,6 +56,10 @@ def main():
     
     app_latency = fetch_data(LATENCY_RETREIVE_URL(cluster_info['ip_address'], app_info['port']), params={})
 
+    print(f"Informações da aplicação: {app_info}")
+    print(f"Informações do cluster: {cluster_info}")
+    print(f"Latência atual da aplicação: {app_latency['latency']} ms")
+
     try:
         if float(app_latency['latency']) > TRESHOLD_LATENCY:
             print("INFO: Latência subindo.")
@@ -89,11 +93,37 @@ def main():
             print(f"Remotes criados: {remotes}")
             adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
-            print(f"App adaptado")
+            print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
             update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG})
 
         elif float(app_latency['latency']) < TRESHOLD_LATENCY:
             print("INFO: Latência em queda.")
+            initial_port = 30300
+            current_num_replicas = int(app_info['num_replicas'])
+            num_replicas = 0 if current_num_replicas < 3 else current_num_replicas - 1
+            initial_name = f'dana-remote-{TARGET_APP}'
+            namespace = f"{initial_name}-ns-{num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
+            remotes = []
+            create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces', body={"name": namespace})
+            print(f"Namespace criado: {namespace}")
+
+            for i in range(num_replicas):
+                new_remote = {
+                    "pod_name": f'{initial_name}-{i}',
+                    "namespace": namespace,
+                    "image_name": "my.private-registry.lan:5000/dana-remote:latest",
+                    "app_port": initial_port + (10*num_replicas) + i, # unique port for each replica according to number of total replicas to avoid conflicts
+                }
+                create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/create-pod', body=new_remote)
+                print(f"Solicitação de criação de pod enviada: {new_remote}")
+                remotes.append({"address": cluster_info['ip_address'], "port": new_remote['app_port']})
+
+            time.sleep(15)
+            print(f"Remotes criados: {remotes}")
+            CONFIG = 0 if num_replicas < 3 else 4
+            adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
+            create_data(adaptation_url, body=remotes)
+            print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
 
     except Exception as e:
         print(f"Erro ao processar modelo matemático: {e}")
