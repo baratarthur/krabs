@@ -61,14 +61,27 @@ def main():
     print(f"Latência atual da aplicação: {app_latency['latency']} ms")
 
     try:
-        if float(app_latency['latency']) > TRESHOLD_LATENCY:
+        last_latency = round(float(app_info['last_latency_check']), 2)
+        current_latency = round(float(app_latency['latency']), 2)
+
+        if last_latency == current_latency:
+            print("INFO: Stable latency.")
+            counter = int(app_info['last_latency_counter']) + 1
+            print(f"Counter de estabilidade incrementado: {counter}")
+
+            if counter >= 3: # means no more requests for 3 or more rounds
+                CONFIG = 0
+                adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
+                create_data(adaptation_url, body=[])
+                update_data(APP_INFO_URL, body={"num_replicas": 0, "config": CONFIG, "last_latency_counter": None, "last_latency_check": None})
+                return
+            else:
+                update_data(APP_INFO_URL, body={"num_replicas": app_info['num_replicas'], "config": app_info['config'],
+                                "last_latency_counter": counter, "last_latency_check": current_latency})
+                return
+
+        if current_latency > TRESHOLD_LATENCY:
             print("INFO: Latência subindo.")
-            # clusters = fetch_data(CLUSTERS_URL, params={})
-            # ips = [cluster['ip_address'] for cluster in clusters]
-            # latency_checks = fetch_data(LATENCY_CHECK_URL(current_cluster['ip_address']), params={}, body={"targets": ips})
-            # latency_checks.sort(key=lambda x: x['latency_ms'])
-            # print(f"Latências ordenadas: {latency_checks}")
-            # next_cluster_ip = latency_checks[0]['ip_address']
             initial_port = 30300
             current_num_replicas = int(app_info['num_replicas'])
             num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
@@ -95,9 +108,9 @@ def main():
             adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
             print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
-            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG})
+            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0})
 
-        elif float(app_latency['latency']) < TRESHOLD_LATENCY:
+        elif current_latency < TRESHOLD_LATENCY:
             print("INFO: Latência em queda.")
             initial_port = 30300
             current_num_replicas = int(app_info['num_replicas'])

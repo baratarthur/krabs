@@ -79,7 +79,8 @@ class InfrastructureManager:
     def __init__(self, engine):
         self.engine = engine
 
-    def update_application(self, name: str, num_replicas: int, config: int) -> Optional[Application]:
+    def update_application(self, name: str, num_replicas: int, config: int,
+                           last_latency_check: float, last_latency_counter: int) -> Optional[Application]:
         with Session(self.engine) as session:
             stmt = select(Application).where(Application.name == name)
             app = session.scalar(stmt)
@@ -90,6 +91,10 @@ class InfrastructureManager:
 
             app.num_replicas = num_replicas
             app.config = config
+            if last_latency_check is not None:
+                app.last_latency_check = last_latency_check
+            if last_latency_counter is not None:
+                app.last_latency_counter = last_latency_counter
             session.commit()
             session.refresh(app)
             _ = app.cluster
