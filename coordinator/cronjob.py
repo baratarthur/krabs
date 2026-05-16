@@ -4,7 +4,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
     config.load_incluster_config()
 
     batch_v1 = client.BatchV1Api()
-    APP_CICLE = 1 if type == 'watch' else 2
+    APP_CICLE = 1
 
     environment_vars = [
         client.V1EnvVar(name="TARGET", value=target),
@@ -30,7 +30,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
     job_template = client.V1JobTemplateSpec(
         spec=client.V1JobSpec(
             template=pod_template,
-            backoff_limit=2
+            backoff_limit=3
         )
     )
 
