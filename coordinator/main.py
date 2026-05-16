@@ -99,9 +99,10 @@ def delete_app(name):
         if not app_obj:
             return jsonify({"error": "Aplicação não encontrada."}), 404
 
+        deleted_app = app_obj.to_dict()
         session.delete(app_obj)
         session.commit()
-        return jsonify(app_obj.to_dict()), 200
+        return jsonify(deleted_app), 200
 
 @app.route('/applications', methods=['GET'])
 def list_apps():
