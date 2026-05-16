@@ -108,7 +108,9 @@ def main():
             adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
             print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
-            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency})
+            body = {"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency}
+            print(f"App update body {body}")
+            update_data(APP_INFO_URL, body=body)
 
         elif current_latency < TRESHOLD_LATENCY:
             print("INFO: Latência em queda.")
@@ -137,8 +139,10 @@ def main():
             CONFIG = 0 if num_replicas < 3 else 4
             adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
+            body = {"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency}
             print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
-            update_data(APP_INFO_URL, body={"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency})
+            print(f"App update body {body}")
+            update_data(APP_INFO_URL, body=body)
     except Exception as e:
         print(f"Erro ao processar modelo matemático: {e}")
 
