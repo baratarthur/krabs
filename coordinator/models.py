@@ -18,6 +18,7 @@ class Cluster(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     ip_address: Mapped[str] = mapped_column(String(15), default="0.0.0.0")
+    cores: Mapped[int] = mapped_column(default=4)
     
     applications: Mapped[list["Application"]] = relationship(back_populates="cluster")
 
@@ -35,9 +36,11 @@ class Application(Base):
     name: Mapped[str] = mapped_column(String(50))
     config: Mapped[int] = mapped_column(default=0)
     port: Mapped[int] = mapped_column(default=8080)
+    last_latency_check: Mapped[float] = mapped_column(default=0.0)
+    last_latency_counter: Mapped[int] = mapped_column(default=0)
 
     num_replicas: Mapped[int] = mapped_column(default=0)
-    status: Mapped[str] = mapped_column(String(20), default="unknown") 
+    status: Mapped[str] = mapped_column(String(20), default="unknown")
     
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
@@ -48,6 +51,8 @@ class Application(Base):
             "name": self.name,
             "config": self.config,
             "port": self.port,
+            "last_latency_check": self.last_latency_check,
+            "last_latency_counter": self.last_latency_counter,
             "status": self.status,
             "cluster": self.cluster.name if self.cluster else None,
             "num_replicas": self.num_replicas
