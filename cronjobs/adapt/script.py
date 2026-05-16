@@ -90,6 +90,7 @@ def main():
                 remotes.append({"address": cluster_info['ip_address'], "port": new_remote['app_port']})
 
             time.sleep(15)
+            CONFIG = 4
             print(f"Remotes criados: {remotes}")
             adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
             create_data(adaptation_url, body=remotes)
