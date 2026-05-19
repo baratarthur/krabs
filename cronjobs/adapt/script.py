@@ -107,7 +107,7 @@ def main():
             }
             create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/create-pod', body=new_remote)
             print(f"Solicitação de criação de pod enviada: {new_remote}")
-            remotes.append({"address": cluster_info['ip_address'], "port": new_remote['app_port']})
+            remotes.append({"name": cluster_info['ip_address'], "port": new_remote['app_port']})
 
         print(f"Remotes criados: {remotes}")
         create_data(adaptation_url, body=remotes)
