@@ -67,7 +67,7 @@ def create_pod_handler():
                 "port": app_port,
                 "targetPort": app_port
             }],
-            "type": "ClusterIP"
+            "type": "NodePort"
         }
     }
 
