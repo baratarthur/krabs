@@ -65,7 +65,8 @@ def create_pod_handler():
             "ports": [{
                 "protocol": "TCP",
                 "port": app_port,
-                "targetPort": app_port
+                "targetPort": app_port,
+                "nodePort": app_port
             }],
             "type": "NodePort"
         }
