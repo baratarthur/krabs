@@ -92,11 +92,11 @@ def main():
         remotes = []
 
         if current_latency > TRESHOLD_LATENCY:
-            print("INFO: Latência subindo.")
+            print("INFO: latency increasing.")
             num_replicas = 2 if current_num_replicas < 2 else current_num_replicas + 1
             CONFIG = 4
         else:
-            print("INFO: Latência em queda.")
+            print("INFO: latency decreasing.")
             num_replicas = 0 if current_num_replicas < 3 else current_num_replicas - 1
             CONFIG = 0 if num_replicas < 3 else 4
 
@@ -105,7 +105,7 @@ def main():
         body = {"num_replicas": num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency}
         namespace = f"{initial_name}-ns-{num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
         create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces', body={"name": namespace})
-        print(f"Namespace criado: {namespace}")
+        print(f"Namespace created: {namespace}")
 
         for i in range(num_replicas):
             new_remote = {
@@ -115,20 +115,19 @@ def main():
                 "app_port": initial_port + (10*num_replicas) + i, # unique port for each replica according to number of total replicas to avoid conflicts
             }
             create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/create-pod', body=new_remote)
-            print(f"Solicitação de criação de pod enviada: {new_remote}")
+            print(f"Request to create pod sent: {new_remote}")
             remotes.append({"name": cluster_info['ip_address'], "port": new_remote['app_port']})
 
-        print(f"Remotes criados: {remotes}")
+        print(f"Remotes created: {remotes}")
         create_data(adaptation_url, body=remotes)
         print(f"App adapted to configuration {CONFIG} with {num_replicas} replicas.")
         
         print(f"App update body = {body}")
         update_data(APP_INFO_URL, body=body)
 
-        if num_replicas > 2:
-            print("Delete old namespaces and pods to free cpu capacity in cluster.")
-            old_namespace = f"{initial_name}-ns-{num_replicas - 1}-replicas" # different namespaces for each number of replicas to avoid conflicts
-            delete_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces/{old_namespace}')
+        print("Delete old namespaces and pods to free cpu capacity in cluster.")
+        old_namespace = f"{initial_name}-ns-{current_num_replicas}-replicas" # different namespaces for each number of replicas to avoid conflicts
+        delete_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces/{old_namespace}')
 
         print("Adaptation complete.")
 
