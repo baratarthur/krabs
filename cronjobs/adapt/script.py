@@ -44,6 +44,15 @@ def update_data(url, body):
     except requests.exceptions.RequestException as e:
         print(f"Erro de conexão ao atualizar recurso: {e}")
         return None
+    
+def delete_data(url):
+    try:
+        response = requests.delete(url, verify=False, timeout=45)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro de conexão ao deletar recurso: {e}")
+        return None
 
 def main():
     app_info = fetch_data(APP_INFO_URL, params={})
@@ -111,10 +120,17 @@ def main():
 
         print(f"Remotes criados: {remotes}")
         create_data(adaptation_url, body=remotes)
-        print(f"App adaptado para configuração {CONFIG} com {num_replicas} réplicas.")
+        print(f"App adapted to configuration {CONFIG} with {num_replicas} replicas.")
         
         print(f"App update body = {body}")
         update_data(APP_INFO_URL, body=body)
+
+        if num_replicas > 2:
+            print("Delete old namespaces and pods to free cpu capacity in cluster.")
+            old_namespace = f"{initial_name}-ns-{num_replicas - 1}-replicas" # different namespaces for each number of replicas to avoid conflicts
+            delete_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces/{old_namespace}')
+
+        print("Adaptation complete.")
 
     except Exception as e:
         print(f"Erro ao processar modelo matemático: {e}")
