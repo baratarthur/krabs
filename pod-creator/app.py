@@ -43,8 +43,8 @@ def create_pod_handler():
                 "env": [{"name": "PORT", "value": str(app_port)}],
                 "resources": {
                     "requests": {
-                        "cpu": "1000m",
-                        "memory": "2048Mi"
+                        "cpu": "100m",
+                        "memory": "128Mi"
                     },
                     "limits": {
                         "cpu": "1000m",
