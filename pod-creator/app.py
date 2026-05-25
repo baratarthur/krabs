@@ -38,13 +38,13 @@ def create_pod_handler():
             "containers": [{
                 "name": f"{pod_name}-container",
                 "image": image_name,
-                "imagePullPolicy": "IfNotPresent",
+                "imagePullPolicy": "Always",
                 "ports": [{"containerPort": app_port}],
                 "env": [{"name": "PORT", "value": str(app_port)}],
                 "resources": {
                     "requests": {
-                        "cpu": "100m",
-                        "memory": "128Mi"
+                        "cpu": "1000m",
+                        "memory": "2048Mi"
                     },
                     "limits": {
                         "cpu": "1000m",
@@ -61,6 +61,7 @@ def create_pod_handler():
         "kind": "Service",
         "metadata": {"name": pod_name, "namespace": namespace},
         "spec": {
+            "type": "NodePort",
             "selector": pod_labels,
             "ports": [{
                 "protocol": "TCP",
@@ -68,7 +69,6 @@ def create_pod_handler():
                 "targetPort": app_port,
                 "nodePort": app_port
             }],
-            "type": "NodePort"
         }
     }
 
