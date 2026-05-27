@@ -21,13 +21,16 @@ class Cluster(Base):
     cores: Mapped[int] = mapped_column(default=4)
     
     applications: Mapped[list["Application"]] = relationship(back_populates="cluster")
+    components: Mapped[list["Component"]] = relationship(back_populates="cluster")
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "ip_address": self.ip_address,
-            "applications": [app.name for app in self.applications]
+            "cores": self.cores,
+            "applications": [app.to_dict() for app in self.applications],
+            "components": [comp.to_dict() for comp in self.components]
         }
 
 class Application(Base):
@@ -42,6 +45,8 @@ class Application(Base):
     num_replicas: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String(20), default="unknown")
     
+    components: Mapped[list["Component"]] = relationship(back_populates="applications")
+
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
 
@@ -56,6 +61,26 @@ class Application(Base):
             "status": self.status,
             "cluster": self.cluster.name if self.cluster else None,
             "num_replicas": self.num_replicas
+        }
+    
+class Component(Base):
+    __tablename__ = "components"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    config: Mapped[int] = mapped_column(default=0)
+
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"))
+    application: Mapped["Application"] = relationship(back_populates="components")
+
+    cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
+    cluster: Mapped["Cluster"] = relationship()
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "application_id": self.application_id,
+            "config": self.config
         }
     
 class Telemetry(Base):
@@ -107,9 +132,9 @@ class InfrastructureManager:
             result = [c.to_dict() for c in clusters]
             return result
     
-    def create_cluster(self, name: str, ip_address: str) -> Cluster:
+    def create_cluster(self, name: str, ip_address: str, cores: int) -> Cluster:
         with Session(self.engine) as session:
-            new_cluster = Cluster(name=name, ip_address=ip_address)
+            new_cluster = Cluster(name=name, ip_address=ip_address, cores=cores)
             session.add(new_cluster)
             session.commit()
             session.refresh(new_cluster) 
@@ -171,3 +196,38 @@ class InfrastructureManager:
             session.refresh(new_app)
             _ = new_app.cluster
             return new_app
+        
+    def create_component(self, name: str, cluster_name: str, app_name: str, config: int) -> Optional[Component]:
+        with Session(self.engine) as session:
+            stmt = select(Cluster).where(Cluster.name == cluster_name)
+            cluster = session.scalar(stmt)
+            
+            if not cluster:
+                print(f"Erro: Cluster '{cluster_name}' não encontrado.")
+                return None
+            
+            stmt = select(Application).where(Application.name == app_name, Application.cluster_id == cluster.id)
+            app = session.scalar(stmt)
+
+            if not app:
+                print(f"Erro: Aplicação '{app_name}' não encontrada no cluster '{cluster_name}'.")
+                return None
+
+            new_component = Component(name=name, config=config, application=app, cluster=cluster)
+            session.add(new_component)
+            session.commit()
+            session.refresh(new_component)
+            _ = new_component.application
+            return new_component
+        
+    def delete_component(self, name: str) -> Optional[Component]:
+        with Session(self.engine) as session:
+            stmt = select(Component).where(Component.name == name)
+            component = session.scalar(stmt)
+
+            if not component:
+                return None  
+
+            session.delete(component)
+            session.commit()
+            return component

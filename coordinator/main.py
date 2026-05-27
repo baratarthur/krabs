@@ -14,13 +14,13 @@ manager = InfrastructureManager(engine)
 def create_cluster():
     data = request.json
 
-    if not data or 'name' not in data or 'ip_address' not in data:
-        return jsonify({"error": "Campos 'name' e 'ip_address' são obrigatórios."}), 400
+    if not data or 'name' not in data or 'ip_address' not in data or 'cores' not in data:
+        return jsonify({"error": "Campos 'name', 'ip_address' e 'cores' são obrigatórios."}), 400
 
     try:
-        cluster = manager.create_cluster(data['name'], data['ip_address'])
+        cluster = manager.create_cluster(data['name'], data['ip_address'], data['cores'])
         cluster_info = cluster.to_dict()
-        create_cron_job(cluster_info["name"], cluster_info["ip_address"])
+        # create_cron_job(cluster_info["name"], cluster_info["ip_address"])
 
         return jsonify(cluster_info), 201
     except Exception as e:
@@ -121,6 +121,37 @@ def get_app(name):
             return jsonify({"error": "Aplicação não encontrada."}), 404
         return jsonify(app_obj.to_dict()), 200
     
+# --- Endpoints de Compnents ---
+
+@app.route('/components', methods=['POST'])
+def create_component():
+    data = request.json
+
+    if not data or 'name' not in data or 'cluster_name' not in data or 'app_name' not in data or 'config' not in data:
+        return jsonify({"error": "Campos 'name', 'cluster_name', 'app_name' e 'config' são obrigatórios."}), 400
+
+    try:
+        component = manager.create_component(data['name'], data['cluster_name'], data['app_name'], data['config'])
+
+        if not component:
+            return jsonify({"error": "Cluster ou Aplicação não encontrado."}), 404
+
+        return jsonify(component.to_dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/components/<name>', methods=['DELETE'])
+def delete_component(name):
+    try:
+        component = manager.delete_component(name)
+
+        if not component:
+            return jsonify({"error": "Componente não encontrado."}), 404
+
+        return jsonify(component.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # --- Endpoints de Telemetria ---
 
 @app.route('/telemetry', methods=['POST'])
