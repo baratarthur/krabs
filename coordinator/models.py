@@ -45,7 +45,7 @@ class Application(Base):
     num_replicas: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String(20), default="unknown")
     
-    components: Mapped[list["Component"]] = relationship(back_populates="applications")
+    components: Mapped[list["Component"]] = relationship(back_populates="application")
 
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
@@ -73,7 +73,7 @@ class Component(Base):
     application: Mapped["Application"] = relationship(back_populates="components")
 
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
-    cluster: Mapped["Cluster"] = relationship()
+    cluster: Mapped["Cluster"] = relationship(back_populates="components")
 
     def to_dict(self):
         return {
