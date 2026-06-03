@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from urllib import request
 from sqlalchemy import String, ForeignKey, select, func, desc
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
 from sqlalchemy import create_engine
@@ -29,8 +30,8 @@ class Cluster(Base):
             "name": self.name,
             "ip_address": self.ip_address,
             "cores": self.cores,
-            "applications": [app.to_dict() for app in self.applications],
-            "components": [comp.to_dict() for comp in self.components]
+            "applications": [app.to_dict() for app in self.applications] if self.applications else [],
+            "components": [comp.to_dict() for comp in self.components] if self.components else []
         }
 
 class Application(Base):
@@ -60,6 +61,7 @@ class Application(Base):
             "last_latency_counter": self.last_latency_counter,
             "status": self.status,
             "cluster": self.cluster.name if self.cluster else None,
+            "components": [comp.to_dict() for comp in self.components] if self.components else [],
             "num_replicas": self.num_replicas
         }
     

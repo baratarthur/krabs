@@ -5,10 +5,10 @@ from dto.adaptation_info import AdaptationInfo
 TARGET_APP = os.getenv('TARGET', 'social-media-app')
 CLUSTER_NAME = os.getenv('CLUSTER_NAME', 'unknown')
 
-TELEMETRY_URL = 'http://krabs-service:5002/telemetry'
-CLUSTERS_URL = 'http://krabs-service:5002/clusters'
-CURRENT_CLUSTER_INFO_URL = f'http://krabs-service:5002/clusters/{CLUSTER_NAME}'
-APP_INFO_URL = f'http://krabs-service:5002/applications/{TARGET_APP}'
+KRABS_URL = os.getenv('KRABS_URL', 'http://krabs-service:5002')
+CLUSTERS_URL = f'{KRABS_URL}/clusters'
+CURRENT_CLUSTER_INFO_URL = f'{KRABS_URL}/clusters/{CLUSTER_NAME}'
+APP_INFO_URL = f'{KRABS_URL}/applications/{TARGET_APP}'
 LATENCY_RETREIVE_URL = lambda ip, port: f'http://{ip}:{port}/current-latency'
 LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
 POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
@@ -48,9 +48,10 @@ def main():
             return
         
         adaptation_info = AdaptationInfo(app_info, cluster_info)
+        is_increasing_latency = current_latency > last_latency
 
         # verify adaptation need and set parameters replicas and configuration
-        if current_latency > TRESHOLD_LATENCY:
+        if is_increasing_latency:
             print("INFO: latency increasing.")
             num_replicas = 2 if adaptation_info.current_num_replicas < 2 else adaptation_info.current_num_replicas + 1
             CONFIG = 4
@@ -59,10 +60,9 @@ def main():
             num_replicas = 0 if adaptation_info.current_num_replicas < 3 else adaptation_info.current_num_replicas - 1
             CONFIG = 0 if num_replicas < 3 else 4
 
-        # adaptation url and request the creation of a namespace to handle application remotes
-        adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
-        
-        namespace = f"{adaptation_info.initial_name}-replicas"
+        # TODO: add components registration in coordinator, change namespace to be standarized, change component creation to create only one component
+
+        namespace = f"{adaptation_info.initial_name}-components"
         create_data(f'{POD_CREATOR_URL(cluster_info["ip_address"])}/namespaces', body={"name": namespace})
         print(f"Namespace created: {namespace}")
 
@@ -77,6 +77,8 @@ def main():
             print(f"Request to create pod sent: {new_remote}")
             adaptation_info.add_remote(cluster_info['ip_address'], new_remote['app_port'])
 
+        # adaptation url and request the creation of a namespace to handle application remotes
+        adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
         print(f"Remotes created: {adaptation_info.remotes}")
         create_data(adaptation_url, body=adaptation_info.remotes)
         print(f"App adapted to configuration {CONFIG} with {num_replicas} replicas.")
