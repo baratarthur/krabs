@@ -182,7 +182,7 @@ def main():
     except Exception as e:
         print(f"Erro ao processar modelo matemático: {e}")
 
-def has_available_resources_factory(resources_needed: int):has_available_resources_factory
+def has_available_resources_factory(resources_needed: int):
     def has_available_resources(cluster):
         return int(cluster['cores']) >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
     return has_available_resources
