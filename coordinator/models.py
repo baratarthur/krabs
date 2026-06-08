@@ -141,7 +141,8 @@ class InfrastructureManager:
             session.add(new_cluster)
             session.commit()
             session.refresh(new_cluster) 
-            _ = new_cluster.applications 
+            _ = new_cluster.applications
+            _ = new_cluster.components
             return new_cluster
         
     def delete_cluster(self, name: str) -> Optional[Cluster]:
