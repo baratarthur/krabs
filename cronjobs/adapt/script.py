@@ -67,11 +67,13 @@ def main():
 
             all_clusters = fetch_data(CLUSTERS_URL, params={})
             available_clusters = list(filter(has_available_resources_factory(2 if is_first_adaptation else 1), all_clusters))
+            print(f"Available clusters with enough resources: {available_clusters}")
             if len(available_clusters) == 0: print("No available clusters, can't do anything"); return # no available clusters, can't do anything
             
             clusters_ips = list(map(lambda c: c['ip_address'], available_clusters))
             clusters_latency = create_data(LATENCY_CHECK_URL(cluster_info['ip_address']), {'targets': clusters_ips})
             clusters_ip_latency_correlation = {c['target']: c['latency_ms'] for c in clusters_latency}
+            print(f"Clusters latency correlation: {clusters_ip_latency_correlation}")
             all_cluster_data = [{**c, 'latency_ms': clusters_ip_latency_correlation.get(c['ip_address'])} for c in available_clusters]
             sorted_clusters = sorted(all_cluster_data, key=lambda c: c['latency_ms'])
             print(f"Available clusters sorted by latency: {sorted_clusters}")
@@ -180,7 +182,7 @@ def main():
     except Exception as e:
         print(f"Erro ao processar modelo matemático: {e}")
 
-def has_available_resources_factory(resources_needed: int):
+def has_available_resources_factory(resources_needed: int):has_available_resources_factory
     def has_available_resources(cluster):
         return int(cluster['cores']) >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
     return has_available_resources
