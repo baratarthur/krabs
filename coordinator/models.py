@@ -69,7 +69,7 @@ class Component(Base):
     __tablename__ = "components"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
-    config: Mapped[int] = mapped_column(default=0)
+    port: Mapped[int] = mapped_column(default=30300)
 
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"))
     application: Mapped["Application"] = relationship(back_populates="components")
@@ -81,6 +81,7 @@ class Component(Base):
         return {
             "id": self.id,
             "name": self.name,
+            "port": self.port,
             "application_id": self.application_id,
             "config": self.config
         }
@@ -199,7 +200,7 @@ class InfrastructureManager:
             _ = new_app.cluster
             return new_app
         
-    def create_component(self, name: str, cluster_name: str, app_name: str, config: int) -> Optional[Component]:
+    def create_component(self, name: str, cluster_name: str, app_name: str, port: int) -> Optional[Component]:
         with Session(self.engine) as session:
             stmt = select(Cluster).where(Cluster.name == cluster_name)
             cluster = session.scalar(stmt)
@@ -215,7 +216,7 @@ class InfrastructureManager:
                 print(f"Erro: Aplicação '{app_name}' não encontrada no cluster '{cluster_name}'.")
                 return None
 
-            new_component = Component(name=name, config=config, application=app, cluster=cluster)
+            new_component = Component(name=name, port=port, application=app, cluster=cluster)
             session.add(new_component)
             session.commit()
             session.refresh(new_component)

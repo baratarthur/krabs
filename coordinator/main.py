@@ -41,7 +41,16 @@ def list_clusters():
         stmt = select(Cluster)
         clusters = session.scalars(stmt).all()
         return jsonify([c.to_dict() for c in clusters]), 200
-    
+
+@app.route('/clusters/by-id/<id>', methods=['GET'])
+def get_cluster(id):
+    with Session(engine) as session:
+        stmt = select(Cluster).where(Cluster.id == id)
+        cluster = session.scalar(stmt)
+        if not cluster:
+            return jsonify({"error": "Cluster não encontrado."}), 404
+        return jsonify(cluster.to_dict()), 200
+
 @app.route('/clusters/<name>', methods=['GET'])
 def get_cluster(name):
     with Session(engine) as session:
@@ -127,11 +136,11 @@ def get_app(name):
 def create_component():
     data = request.json
 
-    if not data or 'name' not in data or 'cluster_name' not in data or 'app_name' not in data or 'config' not in data:
-        return jsonify({"error": "Campos 'name', 'cluster_name', 'app_name' e 'config' são obrigatórios."}), 400
+    if not data or 'name' not in data or 'cluster_name' not in data or 'app_name' not in data or 'port' not in data:
+        return jsonify({"error": "Campos 'name', 'cluster_name', 'app_name' e 'port' são obrigatórios."}), 400
 
     try:
-        component = manager.create_component(data['name'], data['cluster_name'], data['app_name'], data['config'])
+        component = manager.create_component(data['name'], data['cluster_name'], data['app_name'], data['port'])
 
         if not component:
             return jsonify({"error": "Cluster ou Aplicação não encontrado."}), 404
