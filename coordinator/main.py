@@ -109,10 +109,10 @@ def delete_app(name):
         stmt = select(Application).where(Application.name == name)
         app_obj = session.scalar(stmt)
 
-        delete_cron_job(app_obj.name, type='adapt')
-
         if not app_obj:
             return jsonify({"error": "Aplicação não encontrada."}), 404
+
+        delete_cron_job(app_obj.name, type='adapt')
 
         deleted_app = app_obj.to_dict()
         session.delete(app_obj)

@@ -46,7 +46,11 @@ class Application(Base):
     num_replicas: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String(20), default="unknown")
     
-    components: Mapped[list["Component"]] = relationship(back_populates="application")
+    components: Mapped[list["Component"]] = relationship(
+        back_populates="application",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     cluster_id: Mapped[int] = mapped_column(ForeignKey("clusters.id"))
     cluster: Mapped["Cluster"] = relationship(back_populates="applications")
