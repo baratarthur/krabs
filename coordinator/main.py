@@ -43,7 +43,7 @@ def list_clusters():
         return jsonify([c.to_dict() for c in clusters]), 200
 
 @app.route('/clusters/by-id/<id>', methods=['GET'])
-def get_cluster(id):
+def get_cluster_by_id(id):
     with Session(engine) as session:
         stmt = select(Cluster).where(Cluster.id == id)
         cluster = session.scalar(stmt)
