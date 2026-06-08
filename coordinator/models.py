@@ -126,6 +126,7 @@ class InfrastructureManager:
             session.commit()
             session.refresh(app)
             _ = app.cluster
+            _ = app.components
             return app
 
     def list_clusters(self):

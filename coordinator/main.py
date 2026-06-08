@@ -89,8 +89,13 @@ def update_app(name):
         return jsonify({"error": "Campos 'num_replicas', 'config' são obrigatórios."}), 400
 
     try:
-        app_obj = manager.update_application(name, data['num_replicas'], data['config'],
-                                             data['last_latency_check'], data['last_latency_counter'])
+        app_obj = manager.update_application(
+            name,
+            data['num_replicas'],
+            data['config'],
+            data.get('last_latency_check'),
+            data.get('last_latency_counter')
+        )
         if not app_obj:
             return jsonify({"error": "Aplicação ou Cluster não encontrado."}), 404
 
