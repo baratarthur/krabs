@@ -83,7 +83,7 @@ class Component(Base):
             "name": self.name,
             "port": self.port,
             "application_id": self.application_id,
-            "config": self.config
+            "cluster_id": self.cluster_id
         }
     
 class Telemetry(Base):
