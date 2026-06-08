@@ -199,6 +199,7 @@ class InfrastructureManager:
             session.commit()
             session.refresh(new_app)
             _ = new_app.cluster
+            _ = new_app.components
             return new_app
         
     def create_component(self, name: str, cluster_name: str, app_name: str, port: int) -> Optional[Component]:
