@@ -73,7 +73,7 @@ def main():
             clusters_ips = list(map(lambda c: c['ip_address'], available_clusters))
             clusters_latency = create_data(LATENCY_CHECK_URL(cluster_info['ip_address']), {'targets': clusters_ips})
             print(f"Latency for available clusters: {clusters_latency}")
-            clusters_ip_latency_correlation = {c['target']: c['latency_ms'] for c in clusters_latency}
+            clusters_ip_latency_correlation = {c['target']: c['latency_ms'] for c in clusters_latency['metrics']}
             print(f"Clusters latency correlation: {clusters_ip_latency_correlation}")
             all_cluster_data = [{**c, 'latency_ms': clusters_ip_latency_correlation.get(c['ip_address'])} for c in available_clusters]
             sorted_clusters = sorted(all_cluster_data, key=lambda c: c['latency_ms'])
