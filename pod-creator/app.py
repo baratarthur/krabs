@@ -95,7 +95,7 @@ def create_pod_handler():
     }), 201
 
 
-@app.route('/delete-pod/<string:pod_name>', methods=['POST'])
+@app.route('/delete-pod/<string:pod_name>', methods=['DELETE'])
 def delete_pod_handler(pod_name):
     """Deleta um pod e seu service correspondente."""
     namespace = os.getenv("POD_NAMESPACE", "default")
