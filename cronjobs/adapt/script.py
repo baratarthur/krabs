@@ -146,7 +146,7 @@ def main():
         # Only decrease components if latency is above homeostasis area
         elif current_latency < (TRESHOLD_LATENCY / 2):
             print("INFO: latency decreasing.")
-            should_delete_all_remotes = adaptation_info.current_num_replicas < 2
+            should_delete_all_remotes = adaptation_info.current_num_replicas < 3
             num_replicas = 0 if should_delete_all_remotes else adaptation_info.current_num_replicas - 1
             CONFIG = MONOLITH_PROXY_CONFIG if should_delete_all_remotes else DEFAULT_PROXY_CONFIG
 
