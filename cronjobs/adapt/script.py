@@ -161,7 +161,8 @@ def main():
             else:
                 print(f"Components left: {app_info['components'][:-1]}")
                 for remote in app_info['components'][:-1]:  # exclude the last component
-                    adaptation_info.add_remote(remote['cluster_id'], remote['port'])
+                    component_cluster = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']), params={})
+                    adaptation_info.add_remote(component_cluster['ip_address'], remote['port'])
                 
                 # adaptation url and request the creation of a namespace to handle application remotes
                 adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
@@ -181,7 +182,7 @@ def main():
 
 def has_available_resources_factory(resources_needed: int):
     def has_available_resources(cluster):
-        return cluster['cores'] >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
+        return int(cluster['cores']) >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
     return has_available_resources
 
 if __name__ == "__main__":
