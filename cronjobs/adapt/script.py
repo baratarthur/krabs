@@ -185,7 +185,8 @@ def main():
 
 def has_available_resources_factory(resources_needed: int):
     def has_available_resources(cluster):
-        return int(cluster['cores']) >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
+        print(f"Amount f applications {len(cluster['applications'])}, amount of components {len(cluster['components'])}, cluster cores {cluster['cores']}, resources needed {resources_needed}")
+        return cluster['cores'] >= (len(cluster['applications']) + len(cluster['components'])) + resources_needed
     return has_available_resources
 
 if __name__ == "__main__":
