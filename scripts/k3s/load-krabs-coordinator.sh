@@ -10,7 +10,7 @@ docker buildx build \
         --push \
         coordinator
 
-sudo k3s kubectl apply -f coordinator/krabs-coordinator-rbac.yaml
+kubectl apply -f coordinator/krabs-coordinator-rbac.yaml
 
 echo "Veryfying deploied image..."
 curl -X GET http://my.private-registry.lan:5000/v2/_catalog
