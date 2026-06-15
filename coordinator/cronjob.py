@@ -39,7 +39,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
         job_template=job_template,
         concurrency_policy="Forbid",
         failed_jobs_history_limit=5,
-        successful_jobs_history_limit=3,
+        successful_jobs_history_limit=10,
     )
 
     cron_job = client.V1CronJob(
