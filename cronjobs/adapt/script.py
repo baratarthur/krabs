@@ -40,7 +40,10 @@ def main():
         current_latency = round(float(app_meta['latency']), 2)
 
         is_same_latency = last_latency == current_latency
-        is_increasing_latency = current_latency > last_latency
+        greater_than_upper_latency_treshold = current_latency > last_latency
+        lower_than_lower_latency_threshold = current_latency < (TRESHOLD_LATENCY / 2)
+        print(f"threshhold calc: {TRESHOLD_LATENCY / 2}")
+        print(f"current latency: {current_latency}, last latency: {last_latency}, upper threshhold: {greater_than_upper_latency_treshold}, lower threshold: {lower_than_lower_latency_threshold}")
 
         if is_same_latency:
             counter = int(app_info['last_latency_counter']) + 1
@@ -59,7 +62,7 @@ def main():
         adaptation_info = AdaptationInfo(app_info, cluster_info)
 
         # verify adaptation need and set parameters replicas and configuration
-        if is_increasing_latency:
+        if greater_than_upper_latency_treshold:
             print("INFO: latency increasing.")
             is_first_adaptation = adaptation_info.current_num_replicas < 2
             num_replicas = 2 if is_first_adaptation else adaptation_info.current_num_replicas + 1
@@ -144,7 +147,7 @@ def main():
             update_data(APP_INFO_URL, body=new_app_information)
 
         # Only decrease components if latency is above homeostasis area
-        elif current_latency < (TRESHOLD_LATENCY / 2):
+        elif lower_than_lower_latency_threshold:
             print("INFO: latency decreasing.")
             should_delete_all_remotes = adaptation_info.current_num_replicas < 3
             num_replicas = 0 if should_delete_all_remotes else adaptation_info.current_num_replicas - 1
