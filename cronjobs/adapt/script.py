@@ -40,7 +40,7 @@ def main():
         current_latency = round(float(app_meta['latency']), 2)
 
         is_same_latency = last_latency == current_latency
-        greater_than_upper_latency_treshold = current_latency > last_latency
+        greater_than_upper_latency_treshold = current_latency > TRESHOLD_LATENCY
         lower_than_lower_latency_threshold = current_latency < (TRESHOLD_LATENCY / 2)
         print(f"threshhold calc: {TRESHOLD_LATENCY / 2}")
         print(f"current latency: {current_latency}, last latency: {last_latency}, upper threshhold: {greater_than_upper_latency_treshold}, lower threshold: {lower_than_lower_latency_threshold}")
