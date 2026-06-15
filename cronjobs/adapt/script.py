@@ -153,7 +153,7 @@ def main():
             num_replicas = 0 if should_delete_all_remotes else adaptation_info.current_num_replicas - 1
             CONFIG = MONOLITH_PROXY_CONFIG if should_delete_all_remotes else DEFAULT_PROXY_CONFIG
 
-            print(f"current num replicas: {adaptation_info.current_num_replicas}, should delete all remotes: {should_delete_all_remotes}, nex num replicas: {num_replicas}, next conifg: {CONFIG}")
+            print(f"current num replicas: {adaptation_info.current_num_replicas}, should delete all remotes: {should_delete_all_remotes}, next num replicas: {num_replicas}, next conifg: {CONFIG}")
 
             if should_delete_all_remotes:
                 # adaptation url and request the creation of a namespace to handle application remotes
