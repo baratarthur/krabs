@@ -64,9 +64,13 @@ def main():
         # verify adaptation need and set parameters replicas and configuration
         if greater_than_upper_latency_treshold:
             print("INFO: latency increasing.")
-            is_first_adaptation = adaptation_info.current_num_replicas < 2
-            num_replicas = 2 if is_first_adaptation else adaptation_info.current_num_replicas + 1
+            print(f"Current components: {app_info['components']}")
+            remote_components = len(app_info['components'])
+            is_first_adaptation = remote_components < 2
+            num_replicas = 2 if is_first_adaptation else remote_components + 1
             CONFIG = DEFAULT_PROXY_CONFIG
+
+            print(f"adaptation params > remotes: {remote_components}, first adaptation: {is_first_adaptation}, next_num_replicas: {num_replicas}")
 
             all_clusters = fetch_data(CLUSTERS_URL, params={})
             available_clusters = list(filter(has_available_resources_factory(2 if is_first_adaptation else 1), all_clusters))
@@ -84,6 +88,8 @@ def main():
 
             selected_cluster = sorted_clusters[0]
             print(f"Selected cluster for adaptation: {selected_cluster}")
+
+            print("\n============ Adaptation start ================\n\n")
 
             # once the cluster is selected, follow the adaptation
             namespace = f"{adaptation_info.initial_name}-components"
@@ -111,6 +117,7 @@ def main():
                     print(f"Request to create pod sent: {new_remote}")
             else:
                 # map all remote components to clusters
+                print(f"Current components: {app_info['components']}")
                 index = 0
                 for remote in app_info['components']:
                     component_cluster = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']), params={})

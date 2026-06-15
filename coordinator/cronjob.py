@@ -30,7 +30,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
     job_template = client.V1JobTemplateSpec(
         spec=client.V1JobSpec(
             template=pod_template,
-            backoff_limit=3
+            backoff_limit=10
         )
     )
 
