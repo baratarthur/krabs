@@ -1,6 +1,6 @@
 import requests
 
-def fetch_data(url, params):
+def fetch_data(url, params = {}):
     try:
         response = requests.get(url, params=params, verify=False, timeout=45)
         response.raise_for_status()

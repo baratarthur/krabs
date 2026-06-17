@@ -95,19 +95,14 @@ def create_pod_handler():
     }), 201
 
 
-@app.route('/delete-pod/<string:pod_name>', methods=['DELETE'])
-def delete_pod_handler(pod_name):
-    """Deleta um pod e seu service correspondente."""
-    namespace = os.getenv("POD_NAMESPACE", "default")
-    
+@app.route('/delete-pod/<string:pod_namespace>/<string:pod_name>', methods=['DELETE'])
+def delete_pod_handler(pod_namespace, pod_name):
     try:
-        # Deletar o Service primeiro
-        print(f"Tentando deletar o service '{pod_name}' no namespace '{namespace}'")
-        core_v1_api.delete_namespaced_service(name=pod_name, namespace=namespace)
+        print(f"Tentando deletar o service '{pod_name}' no namespace '{pod_namespace}'")
+        core_v1_api.delete_namespaced_service(name=pod_name, namespace=pod_namespace)
         
-        # Deletar o Pod
-        print(f"Tentando deletar o pod '{pod_name}' no namespace '{namespace}'")
-        core_v1_api.delete_namespaced_pod(name=pod_name, namespace=namespace)
+        print(f"Tentando deletar o pod '{pod_name}' no namespace '{pod_namespace}'")
+        core_v1_api.delete_namespaced_pod(name=pod_name, namespace=pod_namespace)
         
         return jsonify({"message": f"Pod e Service '{pod_name}' deletados com sucesso."}), 200
         
