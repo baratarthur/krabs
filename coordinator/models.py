@@ -216,7 +216,7 @@ class InfrastructureManager:
                 print(f"Erro: Cluster '{cluster_name}' não encontrado.")
                 return None
             
-            stmt = select(Application).where(Application.name == app_name, Application.cluster_id == cluster.id)
+            stmt = select(Application).where(Application.name == app_name)
             app = session.scalar(stmt)
 
             if not app:

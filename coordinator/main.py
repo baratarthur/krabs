@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from cronjob import create_cron_job, delete_cron_job
 
-from models import engine, InfrastructureManager, Cluster, Application
+from models import engine, InfrastructureManager, Cluster, Application, Component
 
 app = Flask(__name__)
 manager = InfrastructureManager(engine)
@@ -153,6 +153,13 @@ def create_component():
         return jsonify(component.to_dict()), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/components', methods=['GET'])
+def list_components():
+    with Session(engine) as session:
+        stmt = select(Component)
+        components = session.scalars(stmt).all()
+        return jsonify([c.to_dict() for c in components]), 200
 
 @app.route('/components/<name>', methods=['DELETE'])
 def delete_component(name):

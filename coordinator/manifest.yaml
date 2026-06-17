@@ -29,6 +29,13 @@ spec:
             alembic upgrade head &&
             echo "Iniciando App..." &&
             gunicorn --workers 2 --bind 0.0.0.0:5002 main:app
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "1024Mi"
+            cpu: "1000m"
         ports:
         - containerPort: 5002
         env:
