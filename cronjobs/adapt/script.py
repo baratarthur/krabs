@@ -1,4 +1,5 @@
 import os
+import time
 from api_helper import fetch_data, create_data, update_data, delete_data
 from dto.adaptation_info import AdaptationInfo
 
@@ -18,6 +19,7 @@ POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
 
 REMOTE_IMAGE = "my.private-registry.lan:5000/dana-remote:latest"
 TRESHOLD_LATENCY = 200 # ms
+STARTUP_TIME = 20 # s
 CONFIG = 4
 INITIAL_NUM_REPLICAS = 2
 DEFAULT_PROXY_CONFIG = 4
@@ -146,9 +148,17 @@ def main():
                 print(f"Request to create component sent: {new_component}")
 
             # adaptation url and request the creation of a namespace to handle application remotes
-            adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
-            print(f"Remotes created: {adaptation_info.remotes}")
+            adaptation_endpoint = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt"
+            print("Adapting to monolith to wait remote components startup")
+            monolith_adaptation_url = f'{adaptation_endpoint}/0'
+            create_data(monolith_adaptation_url, body=[])
+
+            print("Sleep for 15 seconds")
+            time.sleep(STARTUP_TIME)
+
+            adaptation_url = f'{adaptation_endpoint}/{CONFIG}'
             print(f"Adaptation url: {adaptation_url}")
+            print(f"Remotes created: {adaptation_info.remotes}")
             create_data(adaptation_url, body=adaptation_info.remotes)
             print(f"App adapted to configuration {CONFIG} with {len(adaptation_info.remotes)} replicas.")
             
