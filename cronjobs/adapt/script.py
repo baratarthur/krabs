@@ -18,9 +18,11 @@ LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
 POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
 
 REMOTE_IMAGE = "my.private-registry.lan:5000/dana-remote:latest"
-TRESHOLD_LATENCY = 200 # ms
-STARTUP_TIME = 20 # s
+TRESHOLD_LATENCY = 300 # ms
+STARTUP_TIME = 10 # s
+ADAPTATION_TIME = 8 # s
 CONFIG = 4
+MINIMUM_NUM_REPLICAS = 2
 INITIAL_NUM_REPLICAS = 2
 DEFAULT_PROXY_CONFIG = 4
 MONOLITH_PROXY_CONFIG = 0
@@ -35,37 +37,48 @@ def main():
     app_meta = fetch_data(LATENCY_RETREIVE_URL(cluster_info['ip_address'], app_info['port']))
     app_components = app_info['components']
 
-    print(f"Informações da aplicação: {app_info}")
-    print(f"Informações do cluster: {cluster_info}")
-    print(f"Latência atual da aplicação: {app_meta['latency']} ms")
+    print(f"Informações da aplicação: {app_info}\n")
+    print(f"Informações do cluster: {cluster_info}\n")
+    print(f"Latência atual da aplicação: {app_meta['latency']} ms\n")
 
     adaptation_info = AdaptationInfo(app_info, cluster_info)
     namespace = f"{adaptation_info.initial_name}-components"
     current_latency = round(float(app_meta['latency']), 2)
     greater_than_upper_latency_treshold = current_latency > TRESHOLD_LATENCY
     lower_than_lower_latency_threshold = current_latency < (TRESHOLD_LATENCY / 2)
+    
     current_num_replicas = len(app_components)
 
-    print(f"current latency: {current_latency}, upper threshhold: {greater_than_upper_latency_treshold}, lower threshold: {lower_than_lower_latency_threshold}")
+    print(f"current latency: {current_latency}\n",
+          f"\t upper threshhold: {greater_than_upper_latency_treshold}\n",
+          f"\t lower threshold: {lower_than_lower_latency_threshold}")
 
     try:
         # verify adaptation need and set parameters replicas and configuration
         if greater_than_upper_latency_treshold:
             '''
-                1 -> get all available clusters
-                2 -> measure distance
-                3 -> mapp cluster information
-                4 -> select cluster
-                5 -> goto line 94
+                1 -> measure the amount of remotes needed
+                2 -> if there is no cores free -> end execution
+                3 -> measure latency and sort clusters
+                4 -> for each cluster
+                    4.0 -> if amount of components needed < 1: break
+                    4.1 -> measure how much components the cluster can handle
+                    4.2 -> create that amount of clusters
+                    4.3 -> decrease amount of components needed
+                    4.4 -> go to next cluster
             '''
             print("\n =============== INFO: latency increasing. ===============\n")
             print(f"Current components: {app_info['components']}")
             
+            amount_of_replicas_needed = max(MINIMUM_NUM_REPLICAS, current_latency // TRESHOLD_LATENCY) # at least 2 replicas will be created
             is_first_adaptation = current_num_replicas < INITIAL_NUM_REPLICAS
-            next_num_replicas = INITIAL_NUM_REPLICAS if is_first_adaptation else current_num_replicas + 1
+            next_num_replicas = INITIAL_NUM_REPLICAS if is_first_adaptation else amount_of_replicas_needed
             CONFIG = DEFAULT_PROXY_CONFIG
 
-            print(f"adaptation params > remotes: {current_num_replicas}, first adaptation: {is_first_adaptation}, next_num_replicas: {next_num_replicas}")
+            print(f"adaptation params > remotes: {current_num_replicas}\n",
+                  f"\tfirst adaptation: {is_first_adaptation}\n",
+                  f"\tnext_num_replicas: {next_num_replicas}\n",
+                  f"\tamount of relpicas needed: {amount_of_replicas_needed}")
 
             # get clusters and  and filter for the ones that have available resources
             all_clusters = fetch_data(CLUSTERS_URL)
@@ -83,88 +96,74 @@ def main():
             sorted_clusters = sorted(all_cluster_data, key=lambda c: c['latency_ms'])
             print(f"Available clusters sorted by latency: {sorted_clusters}")
 
-            selected_cluster = sorted_clusters[0]
-            print(f"Selected cluster for adaptation: {selected_cluster}")
-
             print("\n============ Adaptation start ================\n\n")
+            
+            print(f"Current components: {app_components}")
+            for remote in app_components:
+                component_cluster = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']))
+                component_ip = component_cluster['ip_address']
+                component_port = remote['port']
+                adaptation_info.add_remote(component_ip, component_port)
 
-            # once the cluster is selected, follow the adaptation
-            create_data(f'{POD_CREATOR_URL(selected_cluster["ip_address"])}/namespaces', body={"name": namespace})
-            print(f"Namespace created: {namespace}")
+            for cluster in sorted_clusters:
+                print(f"\tCurrent cluster: {cluster}")
+                print(f"\tAmount of replicas needed: {amount_of_replicas_needed}")
 
-            if is_first_adaptation:
-                '''
-                    1 -> create 2 components at selcted cluster
-                '''
-                for i in range(INITIAL_NUM_REPLICAS): # create 2 replicas in the first adaptation
+                if amount_of_replicas_needed < 1: break
+
+                #try create namespace in current cluster
+                create_data(f'{POD_CREATOR_URL(cluster["ip_address"])}/namespaces', body={"name": namespace})
+                print(f"Namespace created: {namespace}")
+
+                available_cores_in_cluster = int(cluster['cores']) - len(cluster['components']) - len(cluster['applications'])
+                amount_of_replicas_in_cluster = min(available_cores_in_cluster, amount_of_replicas_needed)
+                print(f"\tAvailable cluster cores: {available_cores_in_cluster}\n",
+                      f"\tAmount of replicas in cluster: {amount_of_replicas_in_cluster}")
+
+                for i in range(amount_of_replicas_in_cluster):
                     new_remote = {
                         "pod_name": f'{adaptation_info.initial_name}-{i}',
                         "namespace": namespace,
                         "image_name": REMOTE_IMAGE,
-                        "app_port": adaptation_info.initial_port + i, # unique port
+                        "app_port": adaptation_info.initial_port + len(adaptation_info.remotes) + i, # unique port
                     }
-
-                    create_data(f'{POD_CREATOR_URL(selected_cluster["ip_address"])}/create-pod', body=new_remote)
-                    adaptation_info.add_remote(selected_cluster['ip_address'], new_remote['app_port'])
                     new_component = {
                         "name": new_remote['pod_name'],
-                        "cluster_name": selected_cluster['name'],
+                        "cluster_name": cluster['name'],
                         "app_name": TARGET_APP,
                         "port": new_remote['app_port']
                     }
+                    create_data(f'{POD_CREATOR_URL(cluster["ip_address"])}/create-pod', body=new_remote)
                     create_data(COMPONENTS_URL, body=new_component)
+                    adaptation_info.add_remote(cluster['ip_address'], new_remote['app_port'])
                     print(f"Request to create pod sent: {new_remote}")
-            else:
-                '''
-                    1 -> create one component at selcted cluster
-                '''
-                # map all remote components to clusters
-                print(f"Current components: {app_components}")
-                index = 0
-                for remote in app_components:
-                    component_cluster = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']))
-                    component_port = remote['port']
-                    adaptation_info.add_remote(component_cluster['ip_address'], component_port)
-                    index += 1
 
-                new_remote = {
-                    "pod_name": f'{adaptation_info.initial_name}-{index}',
-                    "namespace": namespace,
-                    "image_name": REMOTE_IMAGE,
-                    "app_port": adaptation_info.initial_port + index, # unique port
-                }
+                amount_of_replicas_needed -= amount_of_replicas_in_cluster
 
-                create_data(f'{POD_CREATOR_URL(selected_cluster["ip_address"])}/create-pod', body=new_remote)
-                print(f"Request to create pod sent: {new_remote}")
-
-                adaptation_info.add_remote(selected_cluster['ip_address'], new_remote['app_port'])
-                new_component = {
-                    "name": new_remote['pod_name'],
-                    "cluster_name": selected_cluster['name'],
-                    "app_name": TARGET_APP,
-                    "port": new_remote['app_port']
-                }
-                create_data(COMPONENTS_URL, body=new_component)
-                print(f"Request to create component sent: {new_component}")
+            print("Sleep for 10 seconds")
+            time.sleep(STARTUP_TIME)
 
             # adaptation url and request the creation of a namespace to handle application remotes
             adaptation_endpoint = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt"
             print("Adapting to monolith to wait remote components startup")
-            monolith_adaptation_url = f'{adaptation_endpoint}/0'
+
+            monolith_adaptation_url = f'{adaptation_endpoint}/{MONOLITH_PROXY_CONFIG}'
             create_data(monolith_adaptation_url, body=[])
 
-            print("Sleep for 15 seconds")
-            time.sleep(STARTUP_TIME)
+            print("Sleep for 8 seconds") # wait remote state to move to middleware
+            time.sleep(ADAPTATION_TIME)
+
+            amount_of_replicas_created = len(adaptation_info.remotes)
 
             adaptation_url = f'{adaptation_endpoint}/{CONFIG}'
-            print(f"Adaptation url: {adaptation_url}")
-            print(f"Remotes created: {adaptation_info.remotes}")
             create_data(adaptation_url, body=adaptation_info.remotes)
-            print(f"App adapted to configuration {CONFIG} with {len(adaptation_info.remotes)} replicas.")
+            print(f"Adaptation url: {adaptation_url}\n",
+                  f"\tRemotes set: {adaptation_info.remotes}\n",
+                  f"\tApp adapted to config {CONFIG} with {amount_of_replicas_created} replicas.")
             
-            new_app_information = {"num_replicas": next_num_replicas, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency}
-            print(f"App update body = {new_app_information}")
+            new_app_information = {"num_replicas": amount_of_replicas_created, "config": CONFIG, "last_latency_counter": 0, "last_latency_check": current_latency}
             update_data(APP_INFO_URL, body=new_app_information)
+            print(f"App update body : {new_app_information}")
 
         # Only decrease components if latency is above homeostasis area
         elif lower_than_lower_latency_threshold:
@@ -178,7 +177,9 @@ def main():
             next_num_replicas = 0 if should_delete_all_remotes else current_num_replicas - 1
             CONFIG = MONOLITH_PROXY_CONFIG if should_delete_all_remotes else DEFAULT_PROXY_CONFIG
 
-            print(f"current num replicas: {adaptation_info.current_num_replicas}, should delete all remotes: {should_delete_all_remotes}, next num replicas: {next_num_replicas}, next conifg: {CONFIG}")
+            print(f"current num replicas: {current_num_replicas}\n",
+                  f"\tshould delete all remotes: {should_delete_all_remotes}\n",
+                  f"\tnext num replicas: {next_num_replicas}, next conifg: {CONFIG}")
 
             if should_delete_all_remotes:
                 '''
@@ -188,10 +189,12 @@ def main():
                 '''
                 # adaptation url and request the creation of a namespace to handle application remotes
                 adaptation_url = f"http://{cluster_info['ip_address']}:{app_info['port']}/adapt/{CONFIG}"
-                print(f"Adaptation url: {adaptation_url}")
                 create_data(adaptation_url, body=[])
+                print(f"Adaptation url: {adaptation_url}")
+                print("Sleep for 8 seconds") # wait remote state to move to middleware
+                time.sleep(ADAPTATION_TIME)
 
-                for remote in app_info['components']:
+                for remote in app_components:
                     cluster_of_component = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']))
                     delete_data(f'{POD_CREATOR_URL(cluster_of_component["ip_address"])}/delete-pod/{namespace}/{remote["name"]}')
                     delete_data(f'{COMPONENTS_URL}/{remote["name"]}')
@@ -204,12 +207,12 @@ def main():
                 4 -> delete pod of last component
                 5 -> delete last component from krabs
                 '''
-                component_to_delete = app_components[-1] # get the last component created, which is the one to be deleted
-                components_to_maintain = app_components[:-1]
-                print(f"Components left: {components_to_maintain}")
-                print(f"Adaptation info: {adaptation_info}")
+                component_to_delete = app_components.pop() # get the last component created, which is the one to be deleted
+                components_to_maintain = [*app_components]
+                print(f"Components left: {components_to_maintain}\n",
+                      f"Adaptation info: {adaptation_info}")
 
-                for remote in components_to_maintain:  # exclude the last component
+                for remote in components_to_maintain: # exclude the last component
                     component_cluster = fetch_data(CLUSTER_INFO_BY_ID_URL(remote['cluster_id']), params={})
                     adaptation_info.add_remote(component_cluster['ip_address'], remote['port'])
                 
