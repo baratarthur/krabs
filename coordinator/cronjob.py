@@ -4,7 +4,7 @@ def create_cron_job(target, ip, type = 'watch', cluster_name = None):
     config.load_incluster_config()
 
     batch_v1 = client.BatchV1Api()
-    APP_CICLE = 1
+    APP_CICLE = 2
 
     environment_vars = [
         client.V1EnvVar(name="TARGET", value=target),
