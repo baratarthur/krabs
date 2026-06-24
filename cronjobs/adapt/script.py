@@ -37,9 +37,11 @@ def main():
     app_meta = fetch_data(LATENCY_RETREIVE_URL(cluster_info['ip_address'], app_info['port']))
     app_components = app_info['components']
 
-    print(f"Informações da aplicação: {app_info}\n")
-    print(f"Informações do cluster: {cluster_info}\n")
-    print(f"Latência atual da aplicação: {app_meta['latency']} ms\n")
+    print(f"App info: {app_info}\n")
+    print(f"Cluster info: {cluster_info}\n\n")
+    print("=====================")
+    print(f"Last Latency: {app_meta['latency']} ms\n")
+    print("=====================\n")
 
     adaptation_info = AdaptationInfo(app_info, cluster_info)
     namespace = f"{adaptation_info.initial_name}-components"
@@ -49,9 +51,11 @@ def main():
     
     current_num_replicas = len(app_components)
 
+    print("=====================")
     print(f"current latency: {current_latency}\n",
           f"\t upper threshhold: {greater_than_upper_latency_treshold}\n",
           f"\t lower threshold: {lower_than_lower_latency_threshold}")
+    print("=====================")
 
     try:
         # verify adaptation need and set parameters replicas and configuration
@@ -105,6 +109,8 @@ def main():
                 component_port = remote['port']
                 adaptation_info.add_remote(component_ip, component_port)
 
+            initial_num_of_remotes = len(app_components)
+
             for cluster in sorted_clusters:
                 print(f"\tCurrent cluster: {cluster['name']}")
                 print(f"\t\tAmount of replicas needed: {amount_of_replicas_needed}")
@@ -125,7 +131,7 @@ def main():
                         "pod_name": f'{adaptation_info.initial_name}-{i}',
                         "namespace": namespace,
                         "image_name": REMOTE_IMAGE,
-                        "app_port": adaptation_info.initial_port + len(adaptation_info.remotes) + i, # unique port
+                        "app_port": adaptation_info.initial_port + initial_num_of_remotes + i,
                     }
                     new_component = {
                         "name": new_remote['pod_name'],
