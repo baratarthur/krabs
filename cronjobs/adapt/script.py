@@ -110,7 +110,7 @@ def main():
                 adaptation_info.add_remote(component_ip, component_port)
 
             initial_num_of_remotes = len(app_components)
-
+            index = initial_num_of_remotes
             for cluster in sorted_clusters:
                 print(f"\tCurrent cluster: {cluster['name']}")
                 print(f"\t\tAmount of replicas needed: {amount_of_replicas_needed}")
@@ -126,12 +126,12 @@ def main():
                 print(f"\t\tAvailable cluster cores: {available_cores_in_cluster}\n",
                       f"\t\tAmount of replicas in cluster: {amount_of_replicas_in_cluster}")
 
-                for i in range(amount_of_replicas_in_cluster):
+                for _ in range(amount_of_replicas_in_cluster):
                     new_remote = {
-                        "pod_name": f'{adaptation_info.initial_name}-{i}',
+                        "pod_name": f'{adaptation_info.initial_name}-{index}',
                         "namespace": namespace,
                         "image_name": REMOTE_IMAGE,
-                        "app_port": adaptation_info.initial_port + initial_num_of_remotes + i,
+                        "app_port": adaptation_info.initial_port + initial_num_of_remotes + index,
                     }
                     new_component = {
                         "name": new_remote['pod_name'],
@@ -145,6 +145,7 @@ def main():
                     print(f"\t\t\tRequest to create pod sent: {new_remote}")
 
                 amount_of_replicas_needed -= amount_of_replicas_in_cluster
+                index += 1
 
             print("Sleep for 10 seconds")
             time.sleep(STARTUP_TIME)
