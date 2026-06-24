@@ -70,7 +70,7 @@ def main():
             print("\n =============== INFO: latency increasing. ===============\n")
             print(f"Current components: {app_info['components']}")
             
-            amount_of_replicas_needed = max(MINIMUM_NUM_REPLICAS, current_latency // TRESHOLD_LATENCY) # at least 2 replicas will be created
+            amount_of_replicas_needed = int(max(MINIMUM_NUM_REPLICAS, current_latency // TRESHOLD_LATENCY)) # at least 2 replicas will be created
             is_first_adaptation = current_num_replicas < INITIAL_NUM_REPLICAS
             next_num_replicas = INITIAL_NUM_REPLICAS if is_first_adaptation else amount_of_replicas_needed
             CONFIG = DEFAULT_PROXY_CONFIG
