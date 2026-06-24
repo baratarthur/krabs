@@ -106,19 +106,19 @@ def main():
                 adaptation_info.add_remote(component_ip, component_port)
 
             for cluster in sorted_clusters:
-                print(f"\tCurrent cluster: {cluster}")
-                print(f"\tAmount of replicas needed: {amount_of_replicas_needed}")
+                print(f"\tCurrent cluster: {cluster['name']}")
+                print(f"\t\tAmount of replicas needed: {amount_of_replicas_needed}")
 
                 if amount_of_replicas_needed < 1: break
 
                 #try create namespace in current cluster
                 create_data(f'{POD_CREATOR_URL(cluster["ip_address"])}/namespaces', body={"name": namespace})
-                print(f"Namespace created: {namespace}")
+                print(f"\t\tNamespace created: {namespace}")
 
                 available_cores_in_cluster = int(cluster['cores']) - len(cluster['components']) - len(cluster['applications'])
                 amount_of_replicas_in_cluster = min(available_cores_in_cluster, amount_of_replicas_needed)
-                print(f"\tAvailable cluster cores: {available_cores_in_cluster}\n",
-                      f"\tAmount of replicas in cluster: {amount_of_replicas_in_cluster}")
+                print(f"\t\tAvailable cluster cores: {available_cores_in_cluster}\n",
+                      f"\t\tAmount of replicas in cluster: {amount_of_replicas_in_cluster}")
 
                 for i in range(amount_of_replicas_in_cluster):
                     new_remote = {
@@ -136,7 +136,7 @@ def main():
                     create_data(f'{POD_CREATOR_URL(cluster["ip_address"])}/create-pod', body=new_remote)
                     create_data(COMPONENTS_URL, body=new_component)
                     adaptation_info.add_remote(cluster['ip_address'], new_remote['app_port'])
-                    print(f"Request to create pod sent: {new_remote}")
+                    print(f"\t\t\tRequest to create pod sent: {new_remote}")
 
                 amount_of_replicas_needed -= amount_of_replicas_in_cluster
 
