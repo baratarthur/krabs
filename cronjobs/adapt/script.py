@@ -18,7 +18,7 @@ LATENCY_CHECK_URL = lambda ip: f'http://{ip}:30003/check-latency'
 POD_CREATOR_URL = lambda ip: f'http://{ip}:30001'
 
 REMOTE_IMAGE = "my.private-registry.lan:5000/dana-remote:latest"
-TRESHOLD_LATENCY = 300 # ms
+TRESHOLD_LATENCY = 1000 # ms
 STARTUP_TIME = 10 # s
 ADAPTATION_TIME = 8 # s
 CONFIG = 3

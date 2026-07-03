@@ -4,7 +4,7 @@ TARGET_APP = os.getenv('TARGET', 'social-media-app')
 
 class AdaptationInfo:
     def __init__(self, app_info, cluster_info):
-        self.initial_port = 30300
+        self.initial_port = 30400
         self.current_num_replicas = int(app_info['num_replicas'])
         self.initial_name = f'dana-remote-{TARGET_APP}'
         self.remotes = []
