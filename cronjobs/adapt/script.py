@@ -143,9 +143,9 @@ def main():
                     create_data(COMPONENTS_URL, body=new_component)
                     adaptation_info.add_remote(cluster['ip_address'], new_remote['app_port'])
                     print(f"\t\t\tRequest to create pod sent: {new_remote}")
+                    index += 1
 
                 amount_of_replicas_needed -= amount_of_replicas_in_cluster
-                index += 1
 
             print("Sleep for 10 seconds")
             time.sleep(STARTUP_TIME)
