@@ -47,7 +47,7 @@ def main():
     namespace = f"{adaptation_info.initial_name}-components"
     current_latency = round(float(app_meta['latency']), 2)
     greater_than_upper_latency_treshold = current_latency > TRESHOLD_LATENCY
-    lower_than_lower_latency_threshold = current_latency < (TRESHOLD_LATENCY / 2)
+    lower_than_lower_latency_threshold = current_latency < (TRESHOLD_LATENCY * 0.4)
     
     current_num_replicas = len(app_components)
 
